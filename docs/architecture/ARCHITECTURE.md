@@ -1,361 +1,341 @@
-# Synthetic Market Simulator Architecture
+# SynTradeX — Architecture
 
 ## 1. System Goal
 
-Build a fully event-driven synthetic financial market where autonomous trading agents submit orders into a simulated exchange. The exchange maintains an order book, matches orders deterministically, emits trades, updates portfolios, and records market data for research analytics.
+Build a fully event-driven quantitative trading simulation engine.
 
-The core project is not AI. The core project is the exchange engine plus event-driven market simulation. AI can be added later as one strategy or research layer.
+The core of this project is the **exchange engine** and the **event-driven simulation pipeline**.
+A synthetic market generator produces price ticks. Strategies consume those ticks and submit orders.
+The exchange processes orders deterministically. Analytics measure how each strategy performed.
 
-## 2. Layered Design
+**This is a backtesting and forward simulation engine. It is not a multi-agent market.**
+Strategies are measurable components, not autonomous actors. The goal is to produce
+research-grade outputs: equity curves, Sharpe ratios, drawdown, Monte Carlo distributions, and
+strategy comparisons — all driven by a clean, testable, deterministic core.
 
-```mermaid
-flowchart TD
-    A[Synthetic Market Generator] --> B[Market Event Engine]
-    C[Trading Agents] --> B
-    B --> D[Order Gateway]
-    D --> E[Order Book]
-    E --> F[Matching Engine]
-    F --> G[Trade Tape]
-    F --> H[Portfolio Engine]
-    G --> I[Analytics Engine]
-    H --> I
-    E --> J[Market Data Feed]
-    J --> C
-    I --> K[Visualization System]
-    I --> L[Optional AI Research Module]
+AI is an optional research layer added in Phase 3, after the exchange and analytics are solid.
+
+---
+
+## 2. System Pipeline
+
 ```
+SimConfig
+    |
+    v
+MarketGenerator (GBM, μ/σ/seed)
+    |
+    v  MARKET_UPDATE events
+EventQueue (heapq, timestamp + sequence priority)
+    |
+    v
+EventLoop (handler registry, simulated clock)
+    |
+    +--> StrategyEngine
+    |        |-- on_market_update(event) -> ORDER_SUBMIT
+    |        |-- on_fill(event)          -> position/cash/pnl update
+    |        |-- strategies: Momentum, MeanReversion, RandomBaseline
+    |
+    +--> OrderBook
+    |        |-- SortedDict bid/ask (price-time priority)
+    |        |-- O(log n) insert, cancel, match
+    |        |-- fill -> TRADE_EXECUTION event
+    |
+    +--> TradeLog
+    |
+    v
+ResearchEngine
+    |-- Sharpe ratio
+    |-- Max drawdown / Calmar ratio
+    |-- Win rate, rolling volatility, VaR 95%
+    |-- Correlation matrix across strategies
+    |
+    v
+Monte Carlo Runner (N=1000 simulations, different seeds)
+    |-- PnL distribution: mean, median, std, percentiles, prob of loss
+    |-- Stress regimes: high volatility, trending, mean-reverting
+    |
+    v
+Visualization
+    |-- Equity curves (all strategies)
+    |-- Monte Carlo fan chart
+    |-- Order book snapshot bar chart
+    |-- Strategy comparison dashboard
+    |-- All saveable as PNG
+```
+
+---
 
 ## 3. Module Map
 
 ### `src/market_sim/core`
 
-The runtime foundation of the simulator.
+The runtime foundation.
 
-Responsibilities:
+- `core/engine`: `RuntimeEngine` — simulation lifecycle, start/stop, coordination.
+- `core/clock`: `SimulationClock` — logical timestamps and sequence numbering.
+- `core/queue`: `EventQueue` — heapq-based priority queue, deterministic ordering.
+- `core/models`: `SimConfig`, `Instrument`, `Side`, `OrderType`, `EventType`.
+- `core/config`: config loading and defaults.
 
-- Own the simulation clock.
-- Own the event dispatcher.
-- Own the deterministic event queue.
-- Define shared base classes.
-- Define shared models.
-- Define runtime configuration.
-- Coordinate the runtime engine.
+**Rule:** `core/` owns simulation mechanics only. No strategy logic, no exchange rules.
 
-Planned concepts:
-
-- `core/clock`: `SimulationClock`, logical timestamps, and sequence numbering.
-- `core/engine`: `RuntimeEngine`, simulation lifecycle, start/stop/replay coordination.
-- `core/queue`: `EventQueue`, deterministic priority ordering, event scheduling.
-- `core/models`: `SimulationConfig`, `Instrument`, `Side`, `OrderType`, `TimeInForce`, `EventType`.
-- `core/config`: config loading, defaults, and run parameters.
-
-Rule: `core/` should contain the generic simulation mechanics. Exchange rules, strategy rules, and market generation rules should live in their own modules.
+---
 
 ### `src/market_sim/events`
 
-The event-driven backbone.
+The event schema layer. Defines what moves through the pipeline.
 
-Responsibilities:
+Events:
+- `Event` — base: `event_id`, `event_type`, `timestamp`, `sequence`, `data`
+- `MarketUpdate` — new price tick from the generator
+- `OrderSubmit` — strategy requests an order
+- `OrderCancel` — strategy cancels an order
+- `TradeExecution` — a fill produced by the matching engine
+- `PortfolioUpdate` — position/cash/pnl state after a fill
+- `SimulationComplete` — end-of-run signal
 
-- Define market event schemas.
-- Define payload contracts.
-- Keep event names and event data consistent across modules.
-- Stay independent from queue mechanics.
+**Rule:** events carry data, not logic. No methods beyond `__post_init__` validation.
 
-Planned concepts:
-
-- `Event`
-- `MarketStateUpdated`
-- `OrderSubmitted`
-- `OrderCancelled`
-- `TradeExecuted`
-- `PortfolioUpdated`
-- `SimulationCompleted`
+---
 
 ### `src/market_sim/market`
 
-Synthetic market state generation.
+Synthetic price generation.
 
-Responsibilities:
+- `market/generators`: `PriceGenerator` — Geometric Brownian Motion, configurable μ/σ/N/seed.
+  Wraps ticks into `MarketUpdate` events.
+- `market/regimes`: `VolatilityRegimeModel` — regime transitions (high vol, trending, mean-reverting).
+- `market/shocks`: `ShockModel` — jump events, liquidity shocks.
+- `MarketState`, `SimConfig` dataclass.
 
-- Generate stochastic price ticks.
-- Simulate volatility regimes.
-- Emit market shocks.
-- Model liquidity variation.
+**Determinism rule:** all randomness is seeded through `SimConfig`. Same seed = identical run.
 
-Planned concepts:
-
-- `market/generators`: `PriceGenerator`, `MarketGenerator`, random walk, geometric Brownian motion.
-- `market/regimes`: `VolatilityRegimeModel`, regime transitions, regime labels.
-- `market/shocks`: `ShockModel`, jump events, liquidity shocks.
-- `MarketState`
-- `LiquidityModel`
+---
 
 ### `src/market_sim/exchange`
 
-The core exchange simulation.
+The deterministic exchange core. The most important correctness boundary in the system.
 
-Responsibilities:
+- `exchange/gateway`: order intake, validation, routing.
+- `exchange/orderbook`: `OrderBook` — `SortedDict` bid/ask levels, price-time priority,
+  O(log n) insert/cancel, market orders with slippage model.
+- `exchange/matching`: `MatchingEngine` — deterministic crossing logic, fill generation.
+- `exchange/execution`: `Trade`, `ExecutionReport`, trade tape.
+- `exchange/validation`: order validation, cancel checks.
 
-- Accept orders and cancellations.
-- Maintain bid and ask books.
-- Match orders using price-time priority.
-- Emit trade executions and order status updates.
-- Produce order book snapshots.
+**Rule:** the matching engine is pure and deterministic. It produces fills from orders.
+It has no knowledge of strategies, portfolios, or analytics.
 
-Planned concepts:
+---
 
-- `exchange/gateway`: order intake, routing, exchange-facing API.
-- `exchange/orderbook`: `OrderBook`, `PriceLevel`, bid/ask depth.
-- `exchange/matching`: `MatchingEngine`, price-time priority, crossing logic.
-- `exchange/execution`: `Trade`, `ExecutionReport`, fills, trade tape.
-- `exchange/validation`: order validation, cancel validation, symbol/session checks.
-- `Order`
-- `LimitOrder`
-- `MarketOrder`
-- `CancelRequest`
-- `Exchange`
+### `src/market_sim/strategies`
 
-### `src/market_sim/agents`
+Measurable trading strategies. These are components, not autonomous agents.
 
-Autonomous trading strategies.
+- `strategies/base`: `Strategy` abstract base — `on_market_update`, `on_fill`, position/cash/pnl state.
+- `strategies/momentum`: `MomentumStrategy`.
+- `strategies/mean_reversion`: `MeanReversionStrategy`.
+- `strategies/random`: `RandomBaseline` — random buy/sell, used for benchmarking.
 
-Responsibilities:
+**Rule:** strategies react to events and submit orders via the event queue.
+They never mutate the order book or portfolio directly.
 
-- Observe market data.
-- Generate orders.
-- React to fills and portfolio state.
-- Support multiple strategy types.
-
-Planned concepts:
-
-- `agents/base/base_strategy.py`: common strategy interface.
-- `agents/random`: baseline random trader.
-- `agents/momentum`: momentum strategy.
-- `agents/mean_reversion`: mean reversion strategy.
-- `TradingAgent`
-- `StatArbAgent`
-- `VolatilityAgent`
+---
 
 ### `src/market_sim/portfolio`
 
-Position, cash, and risk accounting.
+Position, cash, and PnL accounting.
 
-Responsibilities:
-
-- Track cash, positions, realized PnL, and unrealized PnL.
-- Apply fills from the matching engine.
-- Produce portfolio snapshots.
-
-Planned concepts:
-
-- `portfolio/positions`: `Position`, position ledger, inventory state.
+- `portfolio/positions`: `Position`, position ledger.
 - `portfolio/pnl`: realized PnL, unrealized PnL, equity curve.
-- `portfolio/risk`: exposure, limits, drawdown state.
-- `Portfolio`
-- `PortfolioManager`
-- `FillProcessor`
+- `portfolio/risk`: exposure, drawdown state, limits.
+- `Portfolio`, `PortfolioManager`, `FillProcessor`.
+
+**Rule:** portfolio accounting depends only on fills and prices.
+No strategy internals are visible here.
+
+---
 
 ### `src/market_sim/analytics`
 
-Research metrics and experiment analysis.
+Research metrics. Generic — works on any strategy's output.
 
-Responsibilities:
-
-- Calculate PnL.
-- Calculate Sharpe ratio, volatility, drawdown, win/loss ratio, and tail risk.
-- Compare strategy performance across regimes.
-- Support Monte Carlo experiments.
-
-Planned concepts:
-
-- `analytics/metrics`: Sharpe, volatility, drawdown, hit rate, tail metrics.
+- `analytics/metrics`: Sharpe ratio, max drawdown, Calmar ratio, win rate,
+  rolling volatility, VaR 95%.
 - `analytics/statistics`: distributions, correlations, regime statistics.
-- `analytics/performance`: reports, strategy comparisons, equity analysis.
-- `analytics/monte_carlo`: repeated simulations and confidence intervals.
-- `PerformanceReport`
-- `RiskMetrics`
+- `analytics/performance`: `PerformanceReport`, strategy comparison, equity analysis.
+- `analytics/monte_carlo`: `MonteCarloRunner` — N=1000 simulations, PnL distribution,
+  stress test regimes.
+
+**Rule:** analytics is purely downstream. It reads simulation output. It never alters execution.
+
+---
 
 ### `src/market_sim/visualization`
 
-Charts and dashboards.
+Charts and dashboards. All outputs saveable as PNG.
 
-Responsibilities:
+- `EquityCurvePlot` — all strategies on one chart.
+- `MonteCarloFanChart` — percentile bands from Monte Carlo run.
+- `OrderBookSnapshot` — bar chart of bid/ask depth at a point in time.
+- `StrategyDashboard` — comparison view: returns, Sharpe, drawdown, win rate.
 
-- Plot equity curves.
-- Plot order book depth.
-- Plot trade flow.
-- Plot volatility and regime changes.
-- Compare strategies visually.
-
-Planned concepts:
-
-- `EquityCurvePlot`
-- `OrderBookDepthPlot`
-- `TradeFlowPlot`
-- `VolatilityPlot`
-- `DashboardBuilder`
+---
 
 ### `src/market_sim/ai`
 
-Optional research layer.
+Optional research layer. Added in Phase 3, after the exchange and analytics are complete.
+Consumes historical simulation output. Does not replace the exchange core.
 
-Responsibilities:
+Choose exactly one in Phase 3:
+- **(A)** `ai/forecasting` — ARIMA forecasting → forecast-driven strategy.
+- **(B)** `ai/anomaly` — z-score anomaly detection → defensive strategy.
+- **(C)** `ai/rl` — Q-learning agent (state = price changes + position, actions = BUY/SELL/HOLD).
 
-- Add forecasting, anomaly detection, or reinforcement learning experiments.
-- Consume historical simulation output rather than replacing the exchange core.
-
-Planned concepts:
-
-- `ai/forecasting`: time series forecasting experiments.
-- `ai/anomaly`: anomaly detection in trades and market states.
-- `ai/rl`: reinforcement learning experiments.
-- `ForecastModel`
-- `AnomalyDetector`
-- `RLTradingAgent`
+---
 
 ## 4. Event Flow
 
-```mermaid
-sequenceDiagram
-    participant MG as Market Generator
-    participant EB as Event Bus
-    participant AG as Trading Agent
-    participant EX as Exchange
-    participant OB as Order Book
-    participant ME as Matching Engine
-    participant PF as Portfolio Engine
-    participant AN as Analytics
-
-    MG->>EB: MarketStateUpdated
-    EB->>AG: Market data event
-    AG->>EB: SubmitOrder
-    EB->>EX: Order accepted for processing
-    EX->>OB: Add or route order
-    OB->>ME: Match against opposite side
-    ME->>EB: TradeExecuted
-    EB->>PF: Apply fill
-    EB->>AN: Record trade and state
 ```
+MarketGenerator
+    |
+    | MarketUpdate (timestamp t, price p)
+    v
+EventQueue
+    |
+    | dispatch by priority (timestamp, then sequence)
+    v
+EventLoop
+    |
+    +--> StrategyEngine.on_market_update(event)
+    |        |
+    |        | OrderSubmit event
+    |        v
+    |    EventQueue (re-enqueued)
+    |        |
+    |        v
+    |    Exchange.handle_order(event)
+    |        |
+    |        v
+    |    OrderBook + MatchingEngine
+    |        |
+    |        | TradeExecution event
+    |        v
+    |    EventQueue (re-enqueued)
+    |        |
+    |        +--> StrategyEngine.on_fill(event)  -> updates position/cash/pnl
+    |        +--> TradeLog.record(event)
+    |
+    v
+[end of simulation]
+ResearchEngine.compute(trade_log, equity_curves)
+MonteCarloRunner.run(N=1000)
+Visualization.render()
+```
+
+---
 
 ## 5. Data Flow
 
-```text
-1. Market generator emits synthetic market state.
-2. Event engine places the market state update onto the queue.
-3. Agents receive market data and decide whether to submit orders.
-4. Exchange validates incoming orders.
-5. Order book stores passive limit orders.
-6. Matching engine executes aggressive orders using price-time priority.
-7. Trades and execution reports are emitted.
-8. Portfolio engine applies fills and updates positions.
-9. Analytics engine records time series, PnL, risk, and trade statistics.
-10. Visualization system renders charts and dashboards from stored results.
 ```
+1.  SimConfig sets μ, σ, N ticks, seed, and initial capital.
+2.  MarketGenerator produces N price ticks via GBM, wraps each as a MarketUpdate event.
+3.  EventQueue receives all events with (timestamp, sequence) priority.
+4.  EventLoop dispatches events in deterministic order.
+5.  Each strategy receives MarketUpdate, decides to BUY/SELL/HOLD, emits OrderSubmit.
+6.  Exchange validates the order.
+7.  OrderBook stores passive limit orders. MatchingEngine crosses aggressive orders.
+8.  Fills produce TradeExecution events. Strategies update position/cash/pnl via on_fill.
+9.  TradeLog stores all executions.
+10. After simulation ends, ResearchEngine computes metrics for each strategy.
+11. MonteCarloRunner re-runs the simulation N=1000 times with different seeds.
+12. Visualization renders equity curves, fan charts, and the comparison dashboard.
+```
+
+---
 
 ## 6. Core Class Boundaries
 
-### Event Classes
+### Event
 
-```text
-Event
-  event_id
-  event_type
-  timestamp
-  payload
-
-MarketStateUpdated
-OrderSubmitted
-OrderCancelled
-TradeExecuted
-PortfolioUpdated
-SimulationCompleted
+```python
+@dataclass
+class Event:
+    event_id: str        # UUID
+    event_type: EventType
+    timestamp: float     # simulation time
+    sequence: int        # tiebreaker for equal timestamps
+    data: dict
 ```
 
-Rule: events describe something that happened or needs to be processed. They should not own business logic.
+### OrderBook
 
-### Exchange Classes
-
-```text
-Exchange
-  receives order events
-  validates orders
-  sends orders to matching engine
-  emits execution reports
-
-OrderBook
-  owns bid and ask price levels
-  exposes best bid, best ask, depth, and snapshots
-  does not decide strategy behavior
-
-MatchingEngine
-  performs deterministic matching
-  applies price-time priority
-  creates trades and order status updates
+```python
+class OrderBook:
+    bids: SortedDict     # price -> deque[Order], descending
+    asks: SortedDict     # price -> deque[Order], ascending
+    def insert(order: Order) -> None
+    def cancel(order_id: str) -> None
+    def best_bid() -> float
+    def best_ask() -> float
+    def snapshot() -> OrderBookSnapshot
 ```
 
-Rule: the matching engine is the most important correctness boundary. It should be deterministic, heavily tested, and independent from analytics, visualization, and AI.
+### MatchingEngine
 
-### Agent Classes
-
-```text
-TradingAgent
-  observes market events
-  observes execution reports
-  creates order intents
-
-RandomTrader
-MomentumAgent
-MeanReversionAgent
+```python
+class MatchingEngine:
+    def match(order: Order, book: OrderBook) -> list[Trade]
 ```
 
-Rule: agents should not directly mutate the exchange or portfolio. They submit events.
+Pure function-style. No state beyond what it needs to match.
+Deterministic. Heavily unit tested.
 
-### Portfolio Classes
+### Strategy (abstract base)
 
-```text
-Portfolio
-  tracks cash
-  tracks positions
-  tracks realized and unrealized PnL
+```python
+class Strategy(ABC):
+    position: int
+    cash: float
+    pnl: float
 
-PortfolioManager
-  receives fills
-  updates portfolio state
-  emits portfolio snapshots
+    @abstractmethod
+    def on_market_update(self, event: Event) -> list[Event]: ...
+
+    @abstractmethod
+    def on_fill(self, event: Event) -> None: ...
 ```
 
-Rule: portfolio accounting should depend on fills and prices, not on strategy internals.
+### ResearchEngine
 
-### Analytics Classes
-
-```text
-AnalyticsRecorder
-  stores trades, prices, fills, positions, and equity curve
-
-RiskMetrics
-  computes Sharpe, volatility, max drawdown, hit rate, and tail risk
-
-ExperimentRunner
-  runs repeated simulations and compares outputs
+```python
+class ResearchEngine:
+    def sharpe(equity_curve: list[float]) -> float
+    def max_drawdown(equity_curve: list[float]) -> float
+    def calmar(equity_curve: list[float]) -> float
+    def win_rate(trades: list[Trade]) -> float
+    def rolling_volatility(equity_curve: list[float], window: int) -> list[float]
+    def var_95(equity_curve: list[float]) -> float
+    def correlation_matrix(curves: dict[str, list[float]]) -> pd.DataFrame
 ```
 
-Rule: analytics should be downstream from the simulation. It should not alter execution.
+---
 
 ## 7. Determinism Rules
 
-To make this project quant-dev credible:
+- Every event has a `timestamp` and a `sequence` number.
+- Equal timestamps are broken by `sequence`. No random ordering.
+- All RNG seeded through `SimConfig.seed`.
+- `MatchingEngine` is a pure, stateless function. Same inputs → same outputs.
+- Order IDs and trade IDs generated centrally via a counter in `RuntimeEngine`.
+- Tests assert exact fill prices, fill quantities, and event order.
 
-- Every event gets a timestamp and sequence number.
-- Events with equal timestamps are processed by sequence number.
-- Random number generators are seeded through `SimulationConfig`.
-- Matching rules are pure and deterministic.
-- Order IDs and trade IDs are generated centrally.
-- Tests should assert exact execution order.
+---
 
-## 8. Initial Repo Structure
+## 8. Repo Structure
 
-```text
+```
 market-sim/
 ├── README.md
 ├── pyproject.toml
@@ -372,21 +352,6 @@ market-sim/
 ├── notebooks/
 ├── src/
 │   └── market_sim/
-│       ├── ai/
-│       │   ├── forecasting/
-│       │   ├── anomaly/
-│       │   └── rl/
-│       ├── agents/
-│       │   ├── base/
-│       │   │   └── base_strategy.py
-│       │   ├── random/
-│       │   ├── momentum/
-│       │   └── mean_reversion/
-│       ├── analytics/
-│       │   ├── metrics/
-│       │   ├── statistics/
-│       │   ├── performance/
-│       │   └── monte_carlo/
 │       ├── core/
 │       │   ├── clock/
 │       │   ├── engine/
@@ -394,137 +359,42 @@ market-sim/
 │       │   ├── models/
 │       │   └── config/
 │       ├── events/
+│       ├── market/
+│       │   ├── generators/
+│       │   ├── regimes/
+│       │   └── shocks/
 │       ├── exchange/
 │       │   ├── gateway/
 │       │   ├── orderbook/
 │       │   ├── matching/
 │       │   ├── execution/
 │       │   └── validation/
-│       ├── market/
-│       │   ├── generators/
-│       │   ├── regimes/
-│       │   └── shocks/
+│       ├── strategies/
+│       │   ├── base/
+│       │   ├── momentum/
+│       │   ├── mean_reversion/
+│       │   └── random/
 │       ├── portfolio/
 │       │   ├── positions/
 │       │   ├── pnl/
 │       │   └── risk/
-│       └── visualization/
+│       ├── analytics/
+│       │   ├── metrics/
+│       │   ├── statistics/
+│       │   ├── performance/
+│       │   └── monte_carlo/
+│       ├── visualization/
+│       └── ai/
+│           ├── forecasting/
+│           ├── anomaly/
+│           └── rl/
 └── tests/
-    ├── exchange/
-    ├── market/
-    ├── agents/
-    ├── integration/
-    └── unit/
+    ├── unit/
+    │   ├── exchange/
+    │   ├── market/
+    │   ├── strategies/
+    │   └── analytics/
+    └── integration/
 ```
 
-## 9. Build Phases
-
-### Phase 0: Architecture
-
-Goal: lock the system boundaries before writing engine code.
-
-Deliverables:
-
-- Repo structure.
-- Architecture diagram.
-- Event flow.
-- Data flow.
-- Class design.
-
-### Phase 1: Exchange Core
-
-Goal: build the deterministic order book and matching engine.
-
-Deliverables:
-
-- Limit orders.
-- Market orders.
-- Cancellations.
-- Price-time priority.
-- Trade and execution logs.
-- Unit tests for exact matching behavior.
-
-### Phase 2: Event Engine
-
-Goal: make the simulation event-driven.
-
-Deliverables:
-
-- Event queue.
-- Simulation clock.
-- Event bus.
-- Exchange event handlers.
-- Deterministic replay.
-
-### Phase 3: Market Generator
-
-Goal: generate synthetic market conditions.
-
-Deliverables:
-
-- Random walk.
-- Geometric Brownian motion.
-- Volatility regimes.
-- Shock events.
-- Liquidity variation.
-
-### Phase 4: Trading Agents
-
-Goal: add autonomous participants.
-
-Deliverables:
-
-- Random trader.
-- Momentum strategy.
-- Mean reversion strategy.
-- Agent order submission.
-- Agent fill handling.
-
-### Phase 5: Portfolio and Analytics
-
-Goal: measure strategy behavior.
-
-Deliverables:
-
-- Portfolio accounting.
-- PnL.
-- Sharpe ratio.
-- Max drawdown.
-- Volatility.
-- Win/loss ratio.
-- Regime comparison.
-
-### Phase 6: Visualization
-
-Goal: make the project readable and impressive.
-
-Deliverables:
-
-- Equity curves.
-- Order book depth charts.
-- Trade flow charts.
-- Volatility regime plots.
-- Strategy comparison dashboard.
-
-### Phase 7: Optional AI Layer
-
-Goal: add AI only after the exchange and analytics are strong.
-
-Deliverables:
-
-- Forecasting experiment.
-- Anomaly detection.
-- Optional reinforcement learning agent.
-
-## 10. Recommended First Implementation Order
-
-1. Define domain models: `Order`, `Trade`, `ExecutionReport`, `Side`, `OrderType`.
-2. Implement `OrderBook` with bid and ask price levels.
-3. Implement `MatchingEngine` for limit orders.
-4. Add market orders.
-5. Add cancellation support.
-6. Add deterministic unit tests.
-7. Add event queue and event bus.
-8. Connect agents only after the exchange core is correct.
-
-This order keeps the hardest and most valuable part of the system at the center: the exchange.
+---

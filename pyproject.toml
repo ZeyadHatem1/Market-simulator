@@ -1,15 +1,27 @@
 [project]
 name = "market-sim"
 version = "0.1.0"
-description = "Event-driven synthetic financial market simulator."
+description = "Event driven synthetic financial market simulation engine."
 requires-python = ">=3.11"
 dependencies = [
     "numpy",
     "pandas",
     "matplotlib",
     "plotly",
+    "sortedcontainers",
+    "scipy",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "black",
+    "pylint",
 ]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 
+[tool.black]
+line-length = 88
+target-version = ["py311"]
