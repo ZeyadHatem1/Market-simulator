@@ -1,0 +1,17 @@
+from enum import Enum
+
+class EventType(Enum):
+    MARKET_UPDATE = "MARKET_UPDATE"
+    ORDER_SUBMIT = "ORDER_SUBMIT"
+    ORDER_CANCEL = "ORDER_CANCEL"
+    TRADE_EXECUTION = "TRADE_EXECUTION"
+    PORTFOLIO_UPDATE = "PORTFOLIO_UPDATE"
+    SIMULATION_COMPLETE = "SIMULATION_COMPLETE"
+
+class Side(Enum):
+    BUY = "BUY"
+    SELL = "SELL"
+
+class OrderType(Enum):
+    MARKET = "MARKET"
+    LIMIT = "LIMIT"
