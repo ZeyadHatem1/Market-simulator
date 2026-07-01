@@ -1,11 +1,11 @@
-# SynTradeX — Synthetic Market Simulator
+# Synthetic Market Simulator
 
 An event driven quantitative trading simulation engine. A synthetic market generator
 produces price ticks. Strategies consume ticks, submit orders, and get filled by a
 deterministic exchange engine. Analytics measure every strategy across 1000+ Monte Carlo
 simulations.
 
-> **Demo video:** *(added after Phase 3)*
+> **Demo video:** *soon*
 
 ---
 
