@@ -119,7 +119,8 @@ The deterministic exchange core. The most important correctness boundary in the 
 
 - `exchange/gateway`: order intake, validation, routing.
 - `exchange/orderbook`: `OrderBook` — `SortedDict` bid/ask levels, price-time priority,
-  O(log n) insert/cancel, market orders with slippage model.
+  O(log n) insert/cancel. Slippage modeling for market orders is planned for the
+  market microstructure phase (not yet implemented).
 - `exchange/matching`: `MatchingEngine` — deterministic crossing logic, fill generation.
 - `exchange/execution`: `Trade`, `ExecutionReport`, trade tape.
 - `exchange/validation`: order validation, cancel checks.
