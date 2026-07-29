@@ -34,3 +34,4 @@ build/
 # Coverage
 .coverage
 htmlcov/
+CLAUDE.md

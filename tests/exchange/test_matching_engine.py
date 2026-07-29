@@ -117,3 +117,31 @@ def test_market_sweeps_multiple_levels():
     assert len(fills) == 2
     assert fills[0].data["price"] == 100.0
     assert fills[1].data["price"] == 101.0
+
+
+def test_limit_buy_sweeps_multiple_levels():
+    book = OrderBook()
+    book.insert(make_limit("a1", Side.SELL, 100.0, quantity=5.0))
+    book.insert(make_limit("a2", Side.SELL, 101.0, quantity=5.0))
+    fills = match(make_limit("b1", Side.BUY, 102.0, quantity=10.0), book)
+    assert len(fills) == 2
+    assert fills[0].data["price"] == 100.0
+    assert fills[1].data["price"] == 101.0
+    assert book.is_empty()
+
+
+def test_time_priority_at_same_price():
+    book = OrderBook()
+    book.insert(make_limit("a1", Side.SELL, 100.0, quantity=5.0))
+    book.insert(make_limit("a2", Side.SELL, 100.0, quantity=5.0))
+    fills = match(make_market("m1", Side.BUY, quantity=5.0), book)
+    assert fills[0].data["sell_order_id"] == "a1"
+
+
+def test_partial_fill_keeps_time_priority_on_requeue():
+    book = OrderBook()
+    book.insert(make_limit("a1", Side.SELL, 100.0, quantity=10.0))
+    book.insert(make_limit("a2", Side.SELL, 100.0, quantity=5.0))
+    match(make_market("m1", Side.BUY, quantity=5.0), book)
+    fills = match(make_market("m2", Side.BUY, quantity=5.0), book)
+    assert fills[0].data["sell_order_id"] == "a1"
