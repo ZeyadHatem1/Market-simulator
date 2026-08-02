@@ -1,3 +1,3 @@
-from .config import OUConfig, SimConfig
+from .config import JumpDiffusionConfig, OUConfig, SimConfig
 
-__all__ = ["SimConfig", "OUConfig"]
+__all__ = ["SimConfig", "OUConfig", "JumpDiffusionConfig"]

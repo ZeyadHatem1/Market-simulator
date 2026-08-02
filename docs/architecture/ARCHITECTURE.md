@@ -105,9 +105,22 @@ Synthetic price generation.
 
 - `market/generators`: `PriceGenerator` — Geometric Brownian Motion, configurable μ/σ/N/seed.
   `OrnsteinUhlenbeckProcess` — mean-reverting process (θ/μ/σ/N/seed), exact discrete-time
-  solution. Both wrap their output into `MarketUpdate` events.
+  solution. `JumpDiffusionProcess` — Merton jump-diffusion (GBM + compound Poisson jumps,
+  λ/jump_mean/jump_std), reduces exactly to `PriceGenerator`'s GBM when λ=0. All three wrap
+  their output into `MarketUpdate` events. See `docs/decisions/ADR-001-jump-diffusion-placement.md`
+  for why jump events live here rather than in `market/shocks`.
+- `market/arrivals`: `PoissonArrivalProcess` — the *timing* of incoming order arrivals, same
+  family as the generators above (a stochastic process, not an exchange concern). Decides when
+  orders occur; `exchange/gateway` still owns what happens once one arrives. See
+  `docs/decisions/ADR-003-poisson-arrivals-placement.md`.
 - `market/regimes`: `VolatilityRegimeModel` — regime transitions (high vol, trending, mean-reverting).
-- `market/shocks`: `ShockModel` — jump events, liquidity shocks.
+- `market/shocks`: `ShockModel` — liquidity shocks. (Jump events are handled by
+  `JumpDiffusionProcess` in `market/generators`, not here — a full standalone price process is a
+  different concept from a shock layered onto an already-running simulation.)
+- `market/microstructure`: spread dynamics, liquidity metrics, queue dynamics, and the slippage
+  *model*/parameters for market orders. The model lives here; the actual slippage *application*
+  at match time stays in `exchange/orderbook`, which consumes what this module supplies rather
+  than duplicating it. See `docs/decisions/ADR-004-microstructure-slippage-split.md`.
 - `MarketState`, `SimConfig` dataclass.
 
 **Determinism rule:** all randomness is seeded through `SimConfig`. Same seed = identical run.
@@ -118,16 +131,21 @@ Synthetic price generation.
 
 The deterministic exchange core. The most important correctness boundary in the system.
 
-- `exchange/gateway`: order intake, validation, routing.
+- `exchange/gateway`: order intake, validation, routing. See
+  `docs/decisions/ADR-002-gateway-error-boundary.md` for why malformed-order handling lives here.
 - `exchange/orderbook`: `OrderBook` — `SortedDict` bid/ask levels, price-time priority,
-  O(log n) insert/cancel. Slippage modeling for market orders is planned for the
-  market microstructure phase (not yet implemented).
+  O(log n) insert/cancel. Applies slippage to market orders at match time using the model
+  supplied by `market/microstructure` (not yet implemented — no slippage applied yet).
 - `exchange/matching`: `MatchingEngine` — deterministic crossing logic, fill generation.
 - `exchange/execution`: `Trade`, `ExecutionReport`, trade tape.
 - `exchange/validation`: order validation, cancel checks.
 
 **Rule:** the matching engine is pure and deterministic. It produces fills from orders.
 It has no knowledge of strategies, portfolios, or analytics.
+
+**Future optimization boundary:** `MatchingEngine` and `OrderBook` are the only components ever
+targeted for a C++/pybind11 port (see README.md's stack table). Strategies, research, analytics,
+and visualization stay pure Python permanently — this boundary does not move.
 
 ---
 
@@ -363,8 +381,10 @@ market-sim/
 │       ├── events/
 │       ├── market/
 │       │   ├── generators/
+│       │   ├── arrivals/
 │       │   ├── regimes/
-│       │   └── shocks/
+│       │   ├── shocks/
+│       │   └── microstructure/
 │       ├── exchange/
 │       │   ├── gateway/
 │       │   ├── orderbook/
@@ -391,12 +411,16 @@ market-sim/
 │           ├── anomaly/
 │           └── rl/
 └── tests/
-    ├── unit/
-    │   ├── exchange/
-    │   ├── market/
-    │   ├── strategies/
-    │   └── analytics/
+    ├── core/
+    ├── exchange/
+    ├── market/
+    ├── strategies/
+    ├── analytics/
     └── integration/
 ```
+
+Flat, not nested under `tests/unit/` — this reflects the actual repo layout, which was never
+nested despite earlier drafts of this doc implying otherwise. Deliberately left flat rather than
+restructured to match; this is a documentation-accuracy fix, not a planned code change.
 
 ---
