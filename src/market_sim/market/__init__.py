@@ -1,3 +1,3 @@
-from .generators import PriceGenerator
+from .generators import OrnsteinUhlenbeckProcess, PriceGenerator
 
-__all__ = ["PriceGenerator"]
+__all__ = ["PriceGenerator", "OrnsteinUhlenbeckProcess"]

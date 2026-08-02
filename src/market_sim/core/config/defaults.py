@@ -1,4 +1,4 @@
-from .config import SimConfig
+from .config import OUConfig, SimConfig
 
 
 def default_config() -> SimConfig:
@@ -19,4 +19,26 @@ def default_config() -> SimConfig:
         dt=1 / 252,
         seed=42,
         initial_capital=100_000.0,
+    )
+
+
+def default_ou_config() -> OUConfig:
+    """
+    Sensible default Ornstein-Uhlenbeck configuration for quick testing and notebooks.
+
+    theta=5.0:  moderately fast reversion toward mu
+    mu=100.0:   long-run mean level
+    sigma=2.0:  volatility around the mean
+    dt=1/252:   one trading day per step (252 trading days/year)
+    n_steps=252: one full simulated trading year
+    """
+    return OUConfig(
+        instrument="SIM",
+        initial_value=100.0,
+        theta=5.0,
+        mu=100.0,
+        sigma=2.0,
+        n_steps=252,
+        dt=1 / 252,
+        seed=42,
     )

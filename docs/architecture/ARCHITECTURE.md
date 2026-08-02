@@ -104,7 +104,8 @@ Events:
 Synthetic price generation.
 
 - `market/generators`: `PriceGenerator` — Geometric Brownian Motion, configurable μ/σ/N/seed.
-  Wraps ticks into `MarketUpdate` events.
+  `OrnsteinUhlenbeckProcess` — mean-reverting process (θ/μ/σ/N/seed), exact discrete-time
+  solution. Both wrap their output into `MarketUpdate` events.
 - `market/regimes`: `VolatilityRegimeModel` — regime transitions (high vol, trending, mean-reverting).
 - `market/shocks`: `ShockModel` — jump events, liquidity shocks.
 - `MarketState`, `SimConfig` dataclass.

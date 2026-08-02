@@ -145,3 +145,45 @@ def test_partial_fill_keeps_time_priority_on_requeue():
     match(make_market("m1", Side.BUY, quantity=5.0), book)
     fills = match(make_market("m2", Side.BUY, quantity=5.0), book)
     assert fills[0].data["sell_order_id"] == "a1"
+
+
+def test_cancelled_order_is_skipped_at_same_price_level():
+    book = OrderBook()
+    book.insert(make_limit("a1", Side.SELL, 100.0, quantity=5.0))
+    book.insert(make_limit("a2", Side.SELL, 100.0, quantity=5.0))
+    book.cancel("a1")
+
+    fills = match(make_market("m1", Side.BUY, quantity=5.0), book)
+
+    assert len(fills) == 1
+    assert fills[0].data["sell_order_id"] == "a2"
+    assert fills[0].data["quantity"] == 5.0
+    assert book.is_empty()
+
+
+def test_cancelled_order_is_skipped_mid_sweep_across_levels():
+    book = OrderBook()
+    book.insert(make_limit("a1", Side.SELL, 100.0, quantity=5.0))
+    book.insert(make_limit("a2", Side.SELL, 101.0, quantity=5.0))
+    book.cancel("a1")
+
+    fills = match(make_market("m1", Side.BUY, quantity=5.0), book)
+
+    assert len(fills) == 1
+    assert fills[0].data["sell_order_id"] == "a2"
+    assert fills[0].data["price"] == 101.0
+    assert book.is_empty()
+
+
+def test_cancelled_order_is_skipped_during_limit_sweep():
+    book = OrderBook()
+    book.insert(make_limit("a1", Side.SELL, 100.0, quantity=5.0))
+    book.insert(make_limit("a2", Side.SELL, 101.0, quantity=5.0))
+    book.cancel("a1")
+
+    fills = match(make_limit("b1", Side.BUY, 101.0, quantity=5.0), book)
+
+    assert len(fills) == 1
+    assert fills[0].data["sell_order_id"] == "a2"
+    assert fills[0].data["price"] == 101.0
+    assert book.is_empty()
