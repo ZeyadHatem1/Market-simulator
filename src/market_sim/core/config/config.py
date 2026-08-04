@@ -48,6 +48,19 @@ class OUConfig:
 
 
 @dataclass
+class PoissonArrivalConfig:
+    rate: float
+    n_arrivals: int
+    seed: int
+
+    def __post_init__(self) -> None:
+        if self.rate <= 0:
+            raise ValueError(f"rate must be > 0, got {self.rate}")
+        if self.n_arrivals <= 0:
+            raise ValueError(f"n_arrivals must be > 0, got {self.n_arrivals}")
+
+
+@dataclass
 class JumpDiffusionConfig:
     instrument: str
     initial_price: float

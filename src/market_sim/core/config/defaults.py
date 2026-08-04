@@ -1,4 +1,4 @@
-from .config import JumpDiffusionConfig, OUConfig, SimConfig
+from .config import JumpDiffusionConfig, OUConfig, PoissonArrivalConfig, SimConfig
 
 
 def default_config() -> SimConfig:
@@ -64,3 +64,13 @@ def default_jump_diffusion_config() -> JumpDiffusionConfig:
         dt=1 / 252,
         seed=42,
     )
+
+
+def default_poisson_arrival_config() -> PoissonArrivalConfig:
+    """
+    Sensible default Poisson order-arrival configuration for quick testing and notebooks.
+
+    rate=10.0:    10 order arrivals per unit time on average
+    n_arrivals=252: matches the one-trading-year step count used elsewhere
+    """
+    return PoissonArrivalConfig(rate=10.0, n_arrivals=252, seed=42)
