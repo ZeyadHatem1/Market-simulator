@@ -61,6 +61,15 @@ class PoissonArrivalConfig:
 
 
 @dataclass
+class SlippageConfig:
+    coefficient: float
+
+    def __post_init__(self) -> None:
+        if self.coefficient < 0:
+            raise ValueError(f"coefficient must be >= 0, got {self.coefficient}")
+
+
+@dataclass
 class JumpDiffusionConfig:
     instrument: str
     initial_price: float

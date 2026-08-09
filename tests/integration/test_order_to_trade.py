@@ -1,7 +1,10 @@
+import pytest
+
 from market_sim.core.engine.runtime_engine import RuntimeEngine
 from market_sim.core.models import EventType, OrderType, Side
 from market_sim.events import order_submit
 from market_sim.exchange import ExchangeGateway, OrderBook, TradeLog, build_exchange
+from market_sim.market.microstructure import SlippageModel
 
 
 def make_wired_exchange() -> tuple[RuntimeEngine, OrderBook, TradeLog, ExchangeGateway]:
@@ -77,4 +80,27 @@ def test_malformed_order_is_rejected_without_crashing_the_run():
     assert len(gateway.rejected_orders) == 1
     assert gateway.rejected_orders[0].data["order_id"] == malformed.data["order_id"]
     assert trade_log.trade_count() == 1
+    assert book.is_empty()
+
+
+def test_slippage_model_wired_through_build_exchange_moves_market_fill_price():
+    runtime = RuntimeEngine()
+    book, trade_log, _ = build_exchange(runtime, slippage_model=SlippageModel(coefficient=100.0))
+
+    submit(runtime, timestamp=1.0, side=Side.SELL, price=100.0, quantity=5.0)
+    runtime.queue.push(
+        order_submit(
+            timestamp=2.0,
+            sequence=runtime.clock.next_sequence(),
+            order_id=runtime.next_order_id(),
+            side=Side.BUY,
+            order_type=OrderType.MARKET,
+            quantity=5.0,
+        )
+    )
+
+    runtime.start()
+
+    trade = trade_log.all_trades()[0]
+    assert trade.data["price"] == pytest.approx(101.0)
     assert book.is_empty()

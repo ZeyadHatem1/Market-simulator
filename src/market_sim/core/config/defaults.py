@@ -1,4 +1,10 @@
-from .config import JumpDiffusionConfig, OUConfig, PoissonArrivalConfig, SimConfig
+from .config import (
+    JumpDiffusionConfig,
+    OUConfig,
+    PoissonArrivalConfig,
+    SimConfig,
+    SlippageConfig,
+)
 
 
 def default_config() -> SimConfig:
@@ -74,3 +80,13 @@ def default_poisson_arrival_config() -> PoissonArrivalConfig:
     n_arrivals=252: matches the one-trading-year step count used elsewhere
     """
     return PoissonArrivalConfig(rate=10.0, n_arrivals=252, seed=42)
+
+
+def default_slippage_config() -> SlippageConfig:
+    """
+    Sensible default slippage configuration for quick testing and notebooks.
+
+    coefficient=5.0: a market order equal in size to all resting liquidity on the
+    side it's crossing moves the fill price by 5bps against the aggressor.
+    """
+    return SlippageConfig(coefficient=5.0)

@@ -14,6 +14,7 @@ from market_sim.exchange.validation import (
     validate_order_cancel,
     validate_order_submit,
 )
+from market_sim.market.microstructure import SlippageModel
 
 logger = logging.getLogger(__name__)
 
@@ -97,19 +98,25 @@ class ExchangeGateway:
         )
 
 
-def build_exchange(runtime: RuntimeEngine) -> tuple[OrderBook, TradeLog, ExchangeGateway]:
+def build_exchange(
+    runtime: RuntimeEngine, slippage_model: SlippageModel | None = None
+) -> tuple[OrderBook, TradeLog, ExchangeGateway]:
     """
     The single supported way to wire an exchange onto a RuntimeEngine: builds
     OrderBook + MatchingEngine + TradeLog + ExchangeGateway and registers all
     of their handlers (including TradeLog.record for TRADE_EXECUTION) on
     runtime.loop. Use this instead of wiring the pieces by hand so trades can
     never silently go unlogged.
+
+    slippage_model is optional and defaults to None (no slippage applied,
+    market orders fill at the resting order's exact price) so existing
+    callers and tests are unaffected unless they opt in.
     """
     book = OrderBook()
     trade_log = TradeLog()
     gateway = ExchangeGateway(
         book=book,
-        matching_engine=MatchingEngine(),
+        matching_engine=MatchingEngine(slippage_model=slippage_model),
         queue=runtime.queue,
         clock=runtime.clock,
         runtime=runtime,

@@ -117,10 +117,12 @@ Synthetic price generation.
 - `market/shocks`: `ShockModel` — liquidity shocks. (Jump events are handled by
   `JumpDiffusionProcess` in `market/generators`, not here — a full standalone price process is a
   different concept from a shock layered onto an already-running simulation.)
-- `market/microstructure`: spread dynamics, liquidity metrics, queue dynamics, and the slippage
-  *model*/parameters for market orders. The model lives here; the actual slippage *application*
-  at match time stays in `exchange/orderbook`, which consumes what this module supplies rather
-  than duplicating it. See `docs/decisions/ADR-004-microstructure-slippage-split.md`.
+- `market/microstructure`: `SlippageModel` — linear price-impact model
+  (`bps = coefficient * order_quantity / available_liquidity`), applied only to market orders.
+  The model is a pure function; the *application* at match time lives in
+  `exchange/matching.MatchingEngine`, which reads `OrderBook.bid_liquidity()`/`ask_liquidity()`
+  to build its input. Spread dynamics and queue dynamics are not started — out of scope for the
+  current pass. See `docs/decisions/ADR-004-microstructure-slippage-split.md`.
 - `MarketState`, `SimConfig` dataclass.
 
 **Determinism rule:** all randomness is seeded through `SimConfig`. Same seed = identical run.
@@ -133,10 +135,11 @@ The deterministic exchange core. The most important correctness boundary in the 
 
 - `exchange/gateway`: order intake, validation, routing. See
   `docs/decisions/ADR-002-gateway-error-boundary.md` for why malformed-order handling lives here.
-- `exchange/orderbook`: `OrderBook` — `SortedDict` bid/ask levels, price-time priority,
-  O(log n) insert/cancel. Applies slippage to market orders at match time using the model
-  supplied by `market/microstructure` (not yet implemented — no slippage applied yet).
-- `exchange/matching`: `MatchingEngine` — deterministic crossing logic, fill generation.
+- `exchange/orderbook`: `OrderBook` — heap-based bid/ask levels, price-time priority,
+  lazy-delete cancellation. Pure book storage; does not compute fill prices.
+- `exchange/matching`: `MatchingEngine` — deterministic crossing logic, fill generation. Applies
+  `market/microstructure.SlippageModel` to market-order fills when one is configured (optional,
+  defaults to none — see `docs/decisions/ADR-004-microstructure-slippage-split.md`).
 - `exchange/execution`: `Trade`, `ExecutionReport`, trade tape.
 - `exchange/validation`: order validation, cancel checks.
 
@@ -293,13 +296,15 @@ class Event:
 
 ```python
 class OrderBook:
-    bids: SortedDict     # price -> deque[Order], descending
-    asks: SortedDict     # price -> deque[Order], ascending
+    _bids: list[tuple[float, int, Order]]  # max-heap (negated price), price-time priority
+    _asks: list[tuple[float, int, Order]]  # min-heap, price-time priority
     def insert(order: Order) -> None
-    def cancel(order_id: str) -> None
-    def best_bid() -> float
-    def best_ask() -> float
-    def snapshot() -> OrderBookSnapshot
+    def cancel(order_id: str) -> None       # lazy delete via _cancelled set
+    def best_bid() -> Order | None
+    def best_ask() -> Order | None
+    def bid_liquidity() -> float
+    def ask_liquidity() -> float
+    def spread() -> float | None
 ```
 
 ### MatchingEngine
@@ -422,5 +427,17 @@ market-sim/
 Flat, not nested under `tests/unit/` — this reflects the actual repo layout, which was never
 nested despite earlier drafts of this doc implying otherwise. Deliberately left flat rather than
 restructured to match; this is a documentation-accuracy fix, not a planned code change.
+
+---
+
+## 9. Diagrams
+
+Generated from the actual current code (not this document's aspirational module map), so they
+stay accurate as implementation catches up to spec:
+
+- [`docs/diagrams/event_lifecycle.md`](../diagrams/event_lifecycle.md) — sequence diagram of one
+  order-submit-to-fill cycle through the currently wired pipeline.
+- [`docs/diagrams/module_dependency_graph.md`](../diagrams/module_dependency_graph.md) — import
+  graph across `src/market_sim`, distinguishing compile-time imports from runtime handler wiring.
 
 ---

@@ -68,6 +68,29 @@ def test_bid_depth_and_ask_depth():
     assert book.ask_depth() == 1
 
 
+def test_bid_liquidity_and_ask_liquidity_sum_remaining_quantity():
+    book = OrderBook()
+    book.insert(make_limit("b1", Side.BUY, 100.0, quantity=10.0))
+    book.insert(make_limit("b2", Side.BUY, 99.0, quantity=5.0))
+    book.insert(make_limit("a1", Side.SELL, 101.0, quantity=7.0))
+    assert book.bid_liquidity() == 15.0
+    assert book.ask_liquidity() == 7.0
+
+
+def test_liquidity_excludes_cancelled_orders():
+    book = OrderBook()
+    book.insert(make_limit("b1", Side.BUY, 100.0, quantity=10.0))
+    book.insert(make_limit("b2", Side.BUY, 99.0, quantity=5.0))
+    book.cancel("b1")
+    assert book.bid_liquidity() == 5.0
+
+
+def test_liquidity_zero_on_empty_side():
+    book = OrderBook()
+    assert book.bid_liquidity() == 0.0
+    assert book.ask_liquidity() == 0.0
+
+
 def test_invalid_quantity_raises():
     with pytest.raises(ValueError):
         Order(order_id="x", side=Side.BUY, order_type=OrderType.LIMIT,
