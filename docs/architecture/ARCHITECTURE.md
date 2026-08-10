@@ -182,14 +182,26 @@ No strategy internals are visible here.
 
 ### `src/market_sim/analytics`
 
-Research metrics. Generic — works on any strategy's output.
+Research metrics. Generic — works on any strategy's output. All functions are pure: they take
+an equity curve (`list[tuple[timestamp, equity]]`, the shape `Portfolio.equity_curve` already
+produces) or a `PortfolioManager`, and return a number/DataFrame — no side effects, no mutation
+of simulation state.
 
-- `analytics/metrics`: Sharpe ratio, max drawdown, Calmar ratio, win rate,
-  rolling volatility, VaR 95%.
-- `analytics/statistics`: distributions, correlations, regime statistics.
-- `analytics/performance`: `PerformanceReport`, strategy comparison, equity analysis.
+- `analytics/metrics`: `sharpe`, `max_drawdown`, `calmar`, `win_rate`, `rolling_volatility`,
+  `var_95`. `sharpe`/`calmar` take an explicit `periods_per_year` argument rather than assuming
+  252, since `SimConfig.dt` is configurable. `win_rate` reads `Portfolio.realized_pnl_history`
+  (added alongside this module — `PnLTracker` previously only kept a running total, not a
+  per-fill history, so win/loss couldn't be counted).
+- `analytics/statistics`: `correlation_matrix` — pairwise return correlation across strategies'
+  equity curves, aligned by timestamp (not position: two strategies that fill a different
+  number of times end up with differently-sized curves).
+- `analytics/performance`: `PerformanceReport` (one strategy's metrics) + `compare()` (one row
+  per strategy in a `PortfolioManager`, as a DataFrame).
 - `analytics/monte_carlo`: `MonteCarloRunner` — N=1000 simulations, PnL distribution,
-  stress test regimes.
+  stress test regimes. Phase 3, not started.
+
+First write-up using this layer: `docs/research/01_strategy_comparison.md` (backing notebook:
+`notebooks/02_strategy_comparison.ipynb`).
 
 **Rule:** analytics is purely downstream. It reads simulation output. It never alters execution.
 

@@ -61,6 +61,10 @@ class Portfolio:
         return self._pnl.equity_curve
 
     @property
+    def realized_pnl_history(self) -> list[float]:
+        return self._pnl.realized_pnl_history
+
+    @property
     def exposure(self) -> float:
         if self._last_price is None:
             return 0.0

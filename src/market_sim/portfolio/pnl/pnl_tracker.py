@@ -12,9 +12,11 @@ class PnLTracker:
     initial_cash: float
     realized_pnl: float = 0.0
     equity_curve: list[tuple[float, float]] = field(default_factory=list)
+    realized_pnl_history: list[float] = field(default_factory=list)
 
     def add_realized(self, amount: float) -> None:
         self.realized_pnl += amount
+        self.realized_pnl_history.append(amount)
 
     def record_equity(self, timestamp: float, equity: float) -> None:
         self.equity_curve.append((timestamp, equity))

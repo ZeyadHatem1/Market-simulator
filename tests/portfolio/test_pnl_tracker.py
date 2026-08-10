@@ -15,6 +15,14 @@ def test_add_realized_accumulates():
     assert tracker.realized_pnl == 30.0
 
 
+def test_add_realized_appends_to_history():
+    tracker = PnLTracker(initial_cash=10_000.0)
+    tracker.add_realized(0.0)
+    tracker.add_realized(50.0)
+    tracker.add_realized(-20.0)
+    assert tracker.realized_pnl_history == [0.0, 50.0, -20.0]
+
+
 def test_record_equity_appends_to_curve():
     tracker = PnLTracker(initial_cash=10_000.0)
     tracker.record_equity(1.0, 10_000.0)

@@ -89,6 +89,19 @@ def test_realized_pnl_accumulates_on_closing_fill():
     assert portfolio.realized_pnl == pytest.approx(100.0)
 
 
+def test_realized_pnl_history_records_each_fills_realization():
+    portfolio = Portfolio(strategy_id="s1", initial_cash=10_000.0)
+    portfolio.track_order("buy-order")
+    portfolio.track_order("sell-order")
+
+    # opens a position: no realization yet
+    portfolio.on_fill(make_fill(100.0, 10.0, buy_order_id="buy-order", sell_order_id="other-1"))
+    # closes it at a profit
+    portfolio.on_fill(make_fill(110.0, 10.0, buy_order_id="other-2", sell_order_id="sell-order"))
+
+    assert portfolio.realized_pnl_history == [0.0, pytest.approx(100.0)]
+
+
 # --- equity curve / drawdown ---
 
 def test_market_update_records_equity_curve_sample():
