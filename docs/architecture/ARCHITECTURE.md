@@ -150,6 +150,19 @@ It has no knowledge of strategies, portfolios, or analytics.
 targeted for a C++/pybind11 port (see README.md's stack table). Strategies, research, analytics,
 and visualization stay pure Python permanently — this boundary does not move.
 
+- `exchange/native`: the implemented native port — `NativeOrderBook`/`NativeMatchingEngine`,
+  drop-in replacements for `OrderBook`/`MatchingEngine` with identical public method
+  signatures, backed by a pybind11 extension (`exchange/native/cpp/`, built via setuptools, not
+  CMake). Only primitives cross the pybind11 boundary; the native engine is slippage-agnostic
+  (raw crossing only) with `SlippageModel` application staying entirely in the Python adapter.
+  **Opt-in only**: `build_exchange()` is unchanged and still defaults to the pure-Python engine;
+  `build_native_exchange()` is a separate, additive entry point. The extension is fully
+  optional at import time — `market_sim.exchange.native.NATIVE_AVAILABLE` reflects whether it
+  was built, and nothing breaks if it wasn't. Correctness is enforced by differential testing
+  against the Python implementation as the oracle
+  (`tests/exchange/test_native_differential.py`), not by manual inspection. Full rationale in
+  `docs/decisions/ADR-005-native-matching-engine-boundary.md`.
+
 ---
 
 ### `src/market_sim/strategies`

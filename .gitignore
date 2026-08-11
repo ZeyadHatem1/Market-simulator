@@ -17,6 +17,7 @@ venv/
 
 # VSCode
 .vscode/
+compile_commands.json
 
 # Logs
 logs/
@@ -25,6 +26,7 @@ logs/
 dist/
 build/
 *.egg-info/
+*.so
 
 # Testing
 .pytest_cache/
