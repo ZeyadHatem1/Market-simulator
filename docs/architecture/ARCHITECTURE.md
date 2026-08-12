@@ -113,7 +113,13 @@ Synthetic price generation.
   family as the generators above (a stochastic process, not an exchange concern). Decides when
   orders occur; `exchange/gateway` still owns what happens once one arrives. See
   `docs/decisions/ADR-003-poisson-arrivals-placement.md`.
-- `market/regimes`: `VolatilityRegimeModel` — regime transitions (high vol, trending, mean-reverting).
+- `market/regimes`: `VolatilityRegimeModel` — regime-switching GBM: a discrete-time Markov
+  chain over named regimes (e.g. `low_vol`/`high_vol`), each with its own (mu, sigma), sampled
+  once per step via `RegimeConfig.transition_matrix` and driving the same GBM update
+  `PriceGenerator` uses. With a transition matrix that always self-loops on one regime, this
+  reduces exactly to `PriceGenerator`'s plain GBM for that regime's (mu, sigma). Same
+  `generate()`/`price_path()` shape as the other generators, plus `regime_path()` (raw regime
+  label array, one entry per step) for notebooks/Monte Carlo consumption.
 - `market/shocks`: `ShockModel` — liquidity shocks. (Jump events are handled by
   `JumpDiffusionProcess` in `market/generators`, not here — a full standalone price process is a
   different concept from a shock layered onto an already-running simulation.)

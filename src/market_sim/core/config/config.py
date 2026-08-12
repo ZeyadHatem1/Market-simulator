@@ -70,6 +70,49 @@ class SlippageConfig:
 
 
 @dataclass
+class RegimeConfig:
+    instrument: str
+    initial_price: float
+    regimes: dict[str, tuple[float, float]]  # name -> (mu, sigma), ordered
+    transition_matrix: list[list[float]]  # row i = P(regime i -> regime j), aligned to regimes order
+    initial_regime: str
+    n_steps: int
+    dt: float
+    seed: int
+
+    def __post_init__(self) -> None:
+        if self.initial_price <= 0:
+            raise ValueError(f"initial_price must be > 0, got {self.initial_price}")
+        if not self.regimes:
+            raise ValueError("regimes must not be empty")
+        for name, (_, sigma) in self.regimes.items():
+            if sigma < 0:
+                raise ValueError(f"sigma for regime {name!r} must be >= 0, got {sigma}")
+        if self.initial_regime not in self.regimes:
+            raise ValueError(f"initial_regime {self.initial_regime!r} not in regimes")
+
+        n = len(self.regimes)
+        if len(self.transition_matrix) != n:
+            raise ValueError(
+                f"transition_matrix must have one row per regime ({n}), "
+                f"got {len(self.transition_matrix)}"
+            )
+        for row in self.transition_matrix:
+            if len(row) != n:
+                raise ValueError(f"transition_matrix rows must have length {n}, got {len(row)}")
+            if any(p < 0 for p in row):
+                raise ValueError(f"transition probabilities must be >= 0, got {row}")
+            row_sum = sum(row)
+            if abs(row_sum - 1.0) > 1e-8:
+                raise ValueError(f"transition_matrix rows must sum to 1, got {row_sum}")
+
+        if self.n_steps <= 0:
+            raise ValueError(f"n_steps must be > 0, got {self.n_steps}")
+        if self.dt <= 0:
+            raise ValueError(f"dt must be > 0, got {self.dt}")
+
+
+@dataclass
 class JumpDiffusionConfig:
     instrument: str
     initial_price: float

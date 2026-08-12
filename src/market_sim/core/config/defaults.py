@@ -2,6 +2,7 @@ from .config import (
     JumpDiffusionConfig,
     OUConfig,
     PoissonArrivalConfig,
+    RegimeConfig,
     SimConfig,
     SlippageConfig,
 )
@@ -80,6 +81,35 @@ def default_poisson_arrival_config() -> PoissonArrivalConfig:
     n_arrivals=252: matches the one-trading-year step count used elsewhere
     """
     return PoissonArrivalConfig(rate=10.0, n_arrivals=252, seed=42)
+
+
+def default_regime_config() -> RegimeConfig:
+    """
+    Sensible default two-regime (low/high volatility) configuration for quick
+    testing and notebooks.
+
+    low_vol:  mu=0.05, sigma=0.15 — calm market drifting up gently
+    high_vol: mu=0.0,  sigma=0.50 — turbulent, no net drift
+    Transition matrix is sticky (regimes persist rather than flickering every
+    step): 95% chance of staying in the current regime each step, 5% chance
+    of switching.
+    """
+    return RegimeConfig(
+        instrument="SIM",
+        initial_price=100.0,
+        regimes={
+            "low_vol": (0.05, 0.15),
+            "high_vol": (0.0, 0.50),
+        },
+        transition_matrix=[
+            [0.95, 0.05],
+            [0.05, 0.95],
+        ],
+        initial_regime="low_vol",
+        n_steps=252,
+        dt=1 / 252,
+        seed=42,
+    )
 
 
 def default_slippage_config() -> SlippageConfig:

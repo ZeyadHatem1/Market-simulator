@@ -2,6 +2,7 @@ from .config import (
     JumpDiffusionConfig,
     OUConfig,
     PoissonArrivalConfig,
+    RegimeConfig,
     SimConfig,
     SlippageConfig,
 )
@@ -10,6 +11,7 @@ from .defaults import (
     default_jump_diffusion_config,
     default_ou_config,
     default_poisson_arrival_config,
+    default_regime_config,
     default_slippage_config,
 )
 
@@ -18,10 +20,12 @@ __all__ = [
     "OUConfig",
     "JumpDiffusionConfig",
     "PoissonArrivalConfig",
+    "RegimeConfig",
     "SlippageConfig",
     "default_config",
     "default_ou_config",
     "default_jump_diffusion_config",
     "default_poisson_arrival_config",
+    "default_regime_config",
     "default_slippage_config",
 ]
