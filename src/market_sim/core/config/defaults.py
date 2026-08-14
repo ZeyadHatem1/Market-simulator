@@ -3,6 +3,7 @@ from .config import (
     OUConfig,
     PoissonArrivalConfig,
     RegimeConfig,
+    ShockConfig,
     SimConfig,
     SlippageConfig,
 )
@@ -106,6 +107,26 @@ def default_regime_config() -> RegimeConfig:
             [0.05, 0.95],
         ],
         initial_regime="low_vol",
+        n_steps=252,
+        dt=1 / 252,
+        seed=42,
+    )
+
+
+def default_shock_config() -> ShockConfig:
+    """
+    Sensible default liquidity-shock configuration for quick testing and
+    notebooks.
+
+    shock_intensity=2.0: ~2 shock events per simulated year on average.
+    magnitude_range=(0.1, 0.4): during a shock, liquidity drops to 10-40% of
+    normal (a bigger number here means a milder shock).
+    duration_range=(3, 15): a shock lasts 3-15 steps once it starts.
+    """
+    return ShockConfig(
+        shock_intensity=2.0,
+        magnitude_range=(0.1, 0.4),
+        duration_range=(3, 15),
         n_steps=252,
         dt=1 / 252,
         seed=42,

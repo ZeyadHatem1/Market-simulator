@@ -113,6 +113,37 @@ class RegimeConfig:
 
 
 @dataclass
+class ShockConfig:
+    shock_intensity: float  # expected shocks per unit time (Poisson rate)
+    magnitude_range: tuple[float, float]  # liquidity multiplier during a shock, e.g. (0.1, 0.4)
+    duration_range: tuple[int, int]  # shock length in steps, e.g. (3, 15)
+    n_steps: int
+    dt: float
+    seed: int
+
+    def __post_init__(self) -> None:
+        if self.shock_intensity <= 0:
+            raise ValueError(f"shock_intensity must be > 0, got {self.shock_intensity}")
+
+        mag_lo, mag_hi = self.magnitude_range
+        if not (0 < mag_lo <= mag_hi <= 1.0):
+            raise ValueError(
+                f"magnitude_range must satisfy 0 < lo <= hi <= 1.0, got {self.magnitude_range}"
+            )
+
+        dur_lo, dur_hi = self.duration_range
+        if not (1 <= dur_lo <= dur_hi):
+            raise ValueError(
+                f"duration_range must satisfy 1 <= lo <= hi, got {self.duration_range}"
+            )
+
+        if self.n_steps <= 0:
+            raise ValueError(f"n_steps must be > 0, got {self.n_steps}")
+        if self.dt <= 0:
+            raise ValueError(f"dt must be > 0, got {self.dt}")
+
+
+@dataclass
 class JumpDiffusionConfig:
     instrument: str
     initial_price: float

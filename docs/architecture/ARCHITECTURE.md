@@ -120,9 +120,15 @@ Synthetic price generation.
   reduces exactly to `PriceGenerator`'s plain GBM for that regime's (mu, sigma). Same
   `generate()`/`price_path()` shape as the other generators, plus `regime_path()` (raw regime
   label array, one entry per step) for notebooks/Monte Carlo consumption.
-- `market/shocks`: `ShockModel` — liquidity shocks. (Jump events are handled by
-  `JumpDiffusionProcess` in `market/generators`, not here — a full standalone price process is a
-  different concept from a shock layered onto an already-running simulation.)
+- `market/shocks`: `ShockModel` — liquidity shocks: a Poisson-triggered process producing a
+  per-step liquidity-multiplier array (`liquidity_multiplier_path()`), 1.0 = normal, lower
+  during a shock window. Same standalone-process shape as `PoissonArrivalProcess` — owns only
+  shock timing/magnitude, no `Event` wrapping, no clock dependency, and deliberately does not
+  touch `MatchingEngine`/`OrderBook` itself; a consumer (Monte Carlo stress tests, notebooks)
+  applies the multiplier. (Jump events are handled by `JumpDiffusionProcess` in
+  `market/generators`, not here — a full standalone price process is a different concept from a
+  shock layered onto an already-running simulation.) See
+  `docs/decisions/ADR-006-shock-model-placement.md`.
 - `market/microstructure`: `SlippageModel` — linear price-impact model
   (`bps = coefficient * order_quantity / available_liquidity`), applied only to market orders.
   The model is a pure function; the *application* at match time lives in
