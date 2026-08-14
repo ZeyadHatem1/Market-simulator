@@ -14,7 +14,7 @@ a human still has to write glue code.
 ```mermaid
 sequenceDiagram
     autonumber
-    participant Gen as MarketGenerator<br/>(GBM / OU / JumpDiffusion)
+    participant Gen as MarketGenerator<br/>(GBM / OU / JumpDiffusion / Regime)
     participant Q as EventQueue
     participant EL as EventLoop
     participant Strat as Strategy<br/>(on_market_update)

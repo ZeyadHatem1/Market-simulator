@@ -23,7 +23,7 @@ AI is an optional research layer added in Phase 3, after the exchange and analyt
 SimConfig
     |
     v
-MarketGenerator (GBM, μ/σ/seed)
+MarketGenerator (GBM / OU / Jump-Diffusion / Regime-Switching, seeded)
     |
     v  MARKET_UPDATE events
 EventQueue (heapq, timestamp + sequence priority)
@@ -37,7 +37,7 @@ EventLoop (handler registry, simulated clock)
     |        |-- strategies: Momentum, MeanReversion, RandomBaseline
     |
     +--> OrderBook
-    |        |-- SortedDict bid/ask (price-time priority)
+    |        |-- heap-based bid/ask (price-time priority), lazy-delete cancellation
     |        |-- O(log n) insert, cancel, match
     |        |-- fill -> TRADE_EXECUTION event
     |
@@ -432,7 +432,9 @@ market-sim/
 │       │   ├── orderbook/
 │       │   ├── matching/
 │       │   ├── execution/
-│       │   └── validation/
+│       │   ├── validation/
+│       │   └── native/       # opt-in C++/pybind11 port, see ADR-005
+│       │       └── cpp/
 │       ├── strategies/
 │       │   ├── base/
 │       │   ├── momentum/
@@ -457,6 +459,7 @@ market-sim/
     ├── exchange/
     ├── market/
     ├── strategies/
+    ├── portfolio/
     ├── analytics/
     └── integration/
 ```
