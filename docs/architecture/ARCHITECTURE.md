@@ -135,6 +135,15 @@ Synthetic price generation.
   `exchange/matching.MatchingEngine`, which reads `OrderBook.bid_liquidity()`/`ask_liquidity()`
   to build its input. Spread dynamics and queue dynamics are not started — out of scope for the
   current pass. See `docs/decisions/ADR-004-microstructure-slippage-split.md`.
+- `market/liquidity`: `SyntheticLiquidityProvider` — rests a two-sided quote around the current
+  price into `OrderBook` on every `MarketUpdate`, giving strategies' MARKET orders a counterparty
+  to fill against. Inserts directly into `OrderBook` rather than through
+  `ExchangeGateway`/`ORDER_SUBMIT` (same shortcut test fixtures already use). Deliberately
+  non-adversarial (tight, symmetric quotes tracking fair price) — see
+  `docs/research/01_strategy_comparison.md`'s `win_rate` caveat. Accepts an optional
+  `liquidity_multiplier_path` (from `ShockModel`) that scales quoted quantity per step, the
+  mechanism `analytics/monte_carlo.MonteCarloRunner` uses for stress runs. See
+  `docs/decisions/ADR-007-liquidity-provider-placement.md`.
 - `MarketState`, `SimConfig` dataclass.
 
 **Determinism rule:** all randomness is seeded through `SimConfig`. Same seed = identical run.
@@ -222,8 +231,18 @@ of simulation state.
   number of times end up with differently-sized curves).
 - `analytics/performance`: `PerformanceReport` (one strategy's metrics) + `compare()` (one row
   per strategy in a `PortfolioManager`, as a DataFrame).
-- `analytics/monte_carlo`: `MonteCarloRunner` — N=1000 simulations, PnL distribution,
-  stress test regimes. Phase 3, not started.
+- `analytics/monte_carlo`: `MonteCarloRunner` — runs one strategy through N independent full
+  exchange simulations (seeds `base_seed .. base_seed + N - 1`), each wiring
+  `build_exchange()` + a fresh `market/liquidity.SyntheticLiquidityProvider` + the strategy +
+  one `Portfolio`, and summarizes the resulting final-PnL distribution (mean, median, std,
+  percentiles, prob of loss) plus every run's full equity curve. `price_generator_factory`
+  selects normal (plain GBM via `PriceGenerator`) vs. stress (regime-switching via
+  `VolatilityRegimeModel`) runs — both share the same `generate() -> list[Event]` shape, so the
+  runner doesn't special-case which one it's driving. An optional `shock_config_factory` builds
+  a `ShockConfig` per run whose `ShockModel.liquidity_multiplier_path()` feeds the run's
+  liquidity provider, thinning resting depth during shock windows (which `SlippageModel` and
+  partial fills already react to — no `MatchingEngine`/`OrderBook` changes needed). See
+  `docs/decisions/ADR-007-liquidity-provider-placement.md`.
 
 First write-up using this layer: `docs/research/01_strategy_comparison.md` (backing notebook:
 `notebooks/02_strategy_comparison.ipynb`).
@@ -426,7 +445,8 @@ market-sim/
 │       │   ├── arrivals/
 │       │   ├── regimes/
 │       │   ├── shocks/
-│       │   └── microstructure/
+│       │   ├── microstructure/
+│       │   └── liquidity/
 │       ├── exchange/
 │       │   ├── gateway/
 │       │   ├── orderbook/

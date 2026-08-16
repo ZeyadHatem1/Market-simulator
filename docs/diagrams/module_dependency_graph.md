@@ -15,11 +15,11 @@ never as an import.
 graph TD
     core(["core<br/>(models, clock, queue, config, engine)"])
     events(["events<br/>(Event, market_update, order_submit, ...)"])
-    market["market<br/>(generators, arrivals, regimes, shocks, microstructure)"]
+    market["market<br/>(generators, arrivals, regimes, shocks, microstructure, liquidity)"]
     exchange["exchange<br/>(orderbook, matching, validation, execution, gateway, native)"]
     strategies["strategies<br/>(base, momentum, mean_reversion, random)"]
     portfolio["portfolio<br/>(positions, pnl, risk, manager)"]
-    analytics["analytics<br/>(metrics, statistics, performance)"]
+    analytics["analytics<br/>(metrics, statistics, performance, monte_carlo)"]
 
     events --> core
     market --> core
@@ -27,11 +27,15 @@ graph TD
     exchange --> core
     exchange --> events
     exchange --> market
+    market --> exchange
     strategies --> core
     strategies --> events
     portfolio --> core
     portfolio --> events
     analytics --> portfolio
+    analytics --> exchange
+    analytics --> market
+    analytics --> strategies
 
     exchange -.->|"MARKET_UPDATE / TRADE_EXECUTION<br/>handlers (hand-registered)"| strategies
     exchange -.->|"TRADE_EXECUTION handler<br/>(hand-registered)"| portfolio
@@ -43,7 +47,12 @@ to price market-order fills (see `ADR-004-microstructure-slippage-split.md`). Th
 violate the "exchange/strategies/portfolio never import each other" rule below — `market` isn't
 one of those three peers. `analytics --> portfolio` is also a real import (`PerformanceReport`
 and `compare()` read `Portfolio`/`PortfolioManager` directly), and is by design: analytics is
-documented as purely downstream of portfolio state (`ARCHITECTURE.md` §3).
+documented as purely downstream of portfolio state (`ARCHITECTURE.md` §3). `analytics -->
+exchange`/`market`/`strategies` are new edges from `analytics/monte_carlo.MonteCarloRunner`,
+which composes a full simulation per run (`build_exchange()`, `SyntheticLiquidityProvider`,
+`ShockModel`, a caller-supplied `Strategy`) — the first `analytics` submodule that drives a
+simulation rather than only reading its output. See
+`docs/decisions/ADR-007-liquidity-provider-placement.md`.
 
 ### Module-level detail
 
@@ -75,6 +84,7 @@ graph TD
         market_regimes["market/regimes<br/>(VolatilityRegimeModel)"]
         market_shocks["market/shocks<br/>(ShockModel)"]
         market_micro["market/microstructure<br/>(SlippageModel)"]
+        market_liq["market/liquidity<br/>(SyntheticLiquidityProvider)"]
     end
 
     subgraph pkg_exchange["exchange"]
@@ -121,6 +131,7 @@ graph TD
         an_metrics["analytics/metrics<br/>(sharpe, max_drawdown, calmar, ...)"]
         an_stats["analytics/statistics<br/>(correlation_matrix)"]
         an_perf["analytics/performance<br/>(PerformanceReport, compare)"]
+        an_mc["analytics/monte_carlo<br/>(MonteCarloRunner)"]
 
         an_perf --> an_metrics
     end
@@ -135,6 +146,9 @@ graph TD
     market_shocks --> core_config
     market_micro --> core_config
     market_micro --> core_models
+    market_liq --> exch_ob
+    market_liq --> core_models
+    market_liq --> events
 
     exch_gw --> core_clock
     exch_gw --> core_engine
@@ -165,6 +179,12 @@ graph TD
 
     an_perf --> port_core
 
+    an_mc --> exch_gw
+    an_mc --> market_liq
+    an_mc --> market_shocks
+    an_mc --> port_core
+    an_mc --> strat_base
+
     exch_gw -.->|"MARKET_UPDATE handler<br/>(hand-registered)"| strat_base
     strat_base -.->|"ORDER_SUBMIT pushed to queue"| exch_gw
     exch_gw -.->|"TRADE_EXECUTION handler<br/>(hand-registered)"| strat_base
@@ -180,13 +200,29 @@ graph TD
   rule in `ARCHITECTURE.md` §3 actually holds in the current code, not just on paper.
 - **`exchange` imports `market.microstructure`, not the rest of `market`.** `MatchingEngine`,
   `ExchangeGateway`, and the native adapter/gateway all take an optional `SlippageModel` to price
-  market-order fills. `market/generators`, `market/arrivals`, `market/regimes`, and
-  `market/shocks` have no consumer inside `exchange` — they're driven directly by test/notebook
-  code (`notebooks/01_price_processes.ipynb`, `notebooks/02_strategy_comparison.ipynb`).
-- **`market/shocks` is a leaf with no consumer anywhere yet**, deliberately — see
-  `ADR-006-shock-model-placement.md`. It produces a liquidity-multiplier array; nothing in
-  `src/` currently applies it. `analytics/monte_carlo` (not yet built) is the intended first
-  consumer.
+  market-order fills. `market/generators`, `market/arrivals`, `market/regimes` have no consumer
+  inside `exchange` — they're driven directly by test/notebook code
+  (`notebooks/01_price_processes.ipynb`, `notebooks/02_strategy_comparison.ipynb`) or by
+  `analytics/monte_carlo` (see below).
+- **`market` and `exchange` now depend on each other**, in different submodules —
+  `exchange/matching`+`exchange/gateway` import `market/microstructure` (`SlippageModel`), while
+  `market/liquidity` imports `exchange/orderbook` (`Order`, `OrderBook`, to insert quotes
+  directly). Not a circular *module* import (no submodule imports back the one that imports it),
+  but a real package-level two-way edge, unlike the one-directional relationship the previous
+  version of this diagram documented. See `ADR-007-liquidity-provider-placement.md` for why
+  `SyntheticLiquidityProvider` inserts into `OrderBook` directly rather than through
+  `ExchangeGateway`/`ORDER_SUBMIT`.
+- **`market/shocks` has its first real consumer: `analytics/monte_carlo.MonteCarloRunner`.**
+  `ADR-006-shock-model-placement.md` left `ShockModel` unwired and noted `MonteCarloRunner` as
+  the intended first consumer once built — it now is: an optional `shock_config_factory` builds
+  a per-run `ShockModel`, whose `liquidity_multiplier_path()` feeds that run's
+  `SyntheticLiquidityProvider`.
+- **`analytics/monte_carlo` is the first `analytics` submodule that imports `exchange`,
+  `market`, and `strategies`**, not just `portfolio`. Unlike `analytics/metrics`,
+  `analytics/statistics`, and `analytics/performance` (all purely downstream readers of
+  `Portfolio`/equity-curve output), `MonteCarloRunner` actively composes and drives N full
+  simulations (`build_exchange()` + `SyntheticLiquidityProvider` + a caller-supplied `Strategy`)
+  to produce the output it then summarizes.
 - **`analytics/performance` imports `portfolio` directly** — `compare()` takes a
   `PortfolioManager` and reads live `Portfolio` state. `analytics/metrics` and
   `analytics/statistics` are pure functions with no `market_sim` imports at all: they operate on

@@ -1,4 +1,5 @@
 from .metrics import calmar, max_drawdown, rolling_volatility, sharpe, var_95, win_rate
+from .monte_carlo import MonteCarloResult, MonteCarloRunner
 from .performance import PerformanceReport, build_report, compare
 from .statistics import correlation_matrix
 
@@ -13,4 +14,6 @@ __all__ = [
     "PerformanceReport",
     "build_report",
     "compare",
+    "MonteCarloRunner",
+    "MonteCarloResult",
 ]
