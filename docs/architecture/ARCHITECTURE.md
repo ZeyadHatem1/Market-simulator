@@ -226,9 +226,13 @@ of simulation state.
   252, since `SimConfig.dt` is configurable. `win_rate` reads `Portfolio.realized_pnl_history`
   (added alongside this module — `PnLTracker` previously only kept a running total, not a
   per-fill history, so win/loss couldn't be counted).
-- `analytics/statistics`: `correlation_matrix` — pairwise return correlation across strategies'
-  equity curves, aligned by timestamp (not position: two strategies that fill a different
-  number of times end up with differently-sized curves).
+- `analytics/statistics`: `align_equity_curves` — turns a `dict[key, equity_curve]` into one
+  timestamp-aligned `DataFrame` (union of timestamps, forward-filled; later samples win ties at
+  an identical timestamp). `correlation_matrix` — pairwise return correlation across strategies'
+  equity curves, built on `align_equity_curves` (curves can't be zipped by position: two
+  strategies, or two Monte Carlo runs, that fill a different number of times end up with
+  differently-sized curves). `align_equity_curves` is also reused by
+  `visualization.plot_monte_carlo_fan_chart`.
 - `analytics/performance`: `PerformanceReport` (one strategy's metrics) + `compare()` (one row
   per strategy in a `PortfolioManager`, as a DataFrame).
 - `analytics/monte_carlo`: `MonteCarloRunner` — runs one strategy through N independent full
@@ -253,12 +257,24 @@ First write-up using this layer: `docs/research/01_strategy_comparison.md` (back
 
 ### `src/market_sim/visualization`
 
-Charts and dashboards. All outputs saveable as PNG.
+Charts and dashboards. Plain functions, not classes — no per-instance state a chart needs to
+hold beyond its inputs, consistent with `analytics/`'s pure-function style. Each function
+returns a matplotlib `Figure` rather than saving it; the caller decides whether/how to persist
+it (`fig.savefig(path)`), which is how "saveable as PNG" is satisfied without baking file I/O
+into the plotting functions themselves.
 
-- `EquityCurvePlot` — all strategies on one chart.
-- `MonteCarloFanChart` — percentile bands from Monte Carlo run.
-- `OrderBookSnapshot` — bar chart of bid/ask depth at a point in time.
-- `StrategyDashboard` — comparison view: returns, Sharpe, drawdown, win rate.
+- `plot_equity_curves` — all strategies on one chart. Takes `dict[strategy_id, equity_curve]`,
+  the same shape `PortfolioManager.equity_curves()` and `analytics.statistics.correlation_matrix`
+  already use.
+- `plot_monte_carlo_fan_chart` — median equity path plus a shaded percentile band (default
+  5th-95th) across every run in a `MonteCarloResult`. Reuses
+  `analytics.statistics.align_equity_curves` to align runs onto one timestamp axis first, for
+  the same reason `correlation_matrix` needs it: runs that trade a different number of times
+  produce differently-sized equity curves even when every run shares the same underlying tick
+  timestamps.
+- `OrderBookSnapshot` (bar chart of bid/ask depth) and `StrategyDashboard` (comparison view:
+  returns, Sharpe, drawdown, win rate) — not started. Out of scope for Phase 3's "first working
+  charts" step; revisit alongside Phase 4 polish.
 
 ---
 
@@ -481,6 +497,7 @@ market-sim/
     ├── strategies/
     ├── portfolio/
     ├── analytics/
+    ├── visualization/
     └── integration/
 ```
 

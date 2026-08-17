@@ -1,8 +1,8 @@
 # Module Dependency Graph
 
 Generated from actual `from market_sim...` imports in `src/market_sim` (grepped directly, not
-copied from `ARCHITECTURE.md` §3's module map). `visualization/` and `ai/*` have no code yet and
-are omitted; every other package named in §3 now has an implementation and is included.
+copied from `ARCHITECTURE.md` §3's module map). `ai/*` has no code yet and is omitted; every
+other package named in §3 now has an implementation and is included.
 
 ### Package-level view
 
@@ -20,6 +20,7 @@ graph TD
     strategies["strategies<br/>(base, momentum, mean_reversion, random)"]
     portfolio["portfolio<br/>(positions, pnl, risk, manager)"]
     analytics["analytics<br/>(metrics, statistics, performance, monte_carlo)"]
+    visualization["visualization<br/>(equity_curve_plot, monte_carlo_fan_chart)"]
 
     events --> core
     market --> core
@@ -36,6 +37,7 @@ graph TD
     analytics --> exchange
     analytics --> market
     analytics --> strategies
+    visualization --> analytics
 
     exchange -.->|"MARKET_UPDATE / TRADE_EXECUTION<br/>handlers (hand-registered)"| strategies
     exchange -.->|"TRADE_EXECUTION handler<br/>(hand-registered)"| portfolio
@@ -129,11 +131,16 @@ graph TD
 
     subgraph pkg_analytics["analytics"]
         an_metrics["analytics/metrics<br/>(sharpe, max_drawdown, calmar, ...)"]
-        an_stats["analytics/statistics<br/>(correlation_matrix)"]
+        an_stats["analytics/statistics<br/>(align_equity_curves, correlation_matrix)"]
         an_perf["analytics/performance<br/>(PerformanceReport, compare)"]
         an_mc["analytics/monte_carlo<br/>(MonteCarloRunner)"]
 
         an_perf --> an_metrics
+    end
+
+    subgraph pkg_viz["visualization"]
+        viz_equity["visualization/equity_curve_plot<br/>(plot_equity_curves)"]
+        viz_fan["visualization/monte_carlo_fan_chart<br/>(plot_monte_carlo_fan_chart)"]
     end
 
     market_gen --> core_config
@@ -185,6 +192,9 @@ graph TD
     an_mc --> port_core
     an_mc --> strat_base
 
+    viz_fan --> an_mc
+    viz_fan --> an_stats
+
     exch_gw -.->|"MARKET_UPDATE handler<br/>(hand-registered)"| strat_base
     strat_base -.->|"ORDER_SUBMIT pushed to queue"| exch_gw
     exch_gw -.->|"TRADE_EXECUTION handler<br/>(hand-registered)"| strat_base
@@ -228,6 +238,12 @@ graph TD
   `analytics/statistics` are pure functions with no `market_sim` imports at all: they operate on
   the plain `list[tuple[timestamp, equity]]` shape `Portfolio.equity_curve` produces, not on
   `Portfolio` objects themselves.
+- **`visualization` is a leaf that only depends on `analytics`, never on `exchange`/`market`/
+  `strategies`/`portfolio` directly.** `plot_equity_curves` takes the plain
+  `dict[strategy_id, equity_curve]` shape (no imports needed beyond matplotlib);
+  `plot_monte_carlo_fan_chart` takes a `MonteCarloResult` and reuses
+  `analytics.statistics.align_equity_curves` rather than re-deriving the same
+  differently-sized-curves alignment logic `correlation_matrix` already solved.
 - **`core/engine` is the only package that imports `core/clock`, `core/queue`, `core/models`,
   and `events` together** — it's the composition root (`RuntimeEngine` owns one of each), which
   is why `exchange/gateway` and `exchange/native` need to import `core/engine` directly (for
