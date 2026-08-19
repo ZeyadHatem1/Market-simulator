@@ -262,6 +262,7 @@ graph TD
   position in `Portfolio`. `implied_volatility` and `vol_surface` both depend on
   `black_scholes` (for `OptionType` and the pricing formula they invert), but nothing outside
   `derivatives` depends on it yet, and nothing in `derivatives` depends on anything outside it.
+  See `docs/decisions/ADR-008-derivatives-isolation-boundary.md`.
 - **`core/engine` is the only package that imports `core/clock`, `core/queue`, `core/models`,
   and `events` together** — it's the composition root (`RuntimeEngine` owns one of each), which
   is why `exchange/gateway` and `exchange/native` need to import `core/engine` directly (for

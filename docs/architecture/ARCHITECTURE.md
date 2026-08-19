@@ -286,7 +286,8 @@ and vol surfaces. Pure math: takes plain floats/arrays (spot, strike, maturity, 
 there is no options `OrderType`, no options position in `Portfolio`. Adding that would be a
 different, much larger feature (contract specs, expiry handling, options-specific order types)
 than what this step scopes; this module prices options as a research/analysis capability
-alongside `analytics/`, not as tradeable instruments in the simulation.
+alongside `analytics/`, not as tradeable instruments in the simulation. See
+`docs/decisions/ADR-008-derivatives-isolation-boundary.md` for the full placement rationale.
 
 - `derivatives/black_scholes`: `black_scholes_price(S, K, T, r, sigma, option_type, q=0.0)` —
   the Black-Scholes-Merton European call/put formula under a continuous dividend yield
