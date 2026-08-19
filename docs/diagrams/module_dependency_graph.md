@@ -21,6 +21,7 @@ graph TD
     portfolio["portfolio<br/>(positions, pnl, risk, manager)"]
     analytics["analytics<br/>(metrics, statistics, performance, monte_carlo)"]
     visualization["visualization<br/>(equity_curve_plot, monte_carlo_fan_chart)"]
+    derivatives(["derivatives<br/>(black_scholes, implied_volatility, vol_surface)"])
 
     events --> core
     market --> core
@@ -143,6 +144,16 @@ graph TD
         viz_fan["visualization/monte_carlo_fan_chart<br/>(plot_monte_carlo_fan_chart)"]
     end
 
+    subgraph pkg_deriv["derivatives (isolated - no core/events dependency)"]
+        deriv_bs["derivatives/black_scholes<br/>(OptionType, black_scholes_price, black_scholes_greeks)"]
+        deriv_iv["derivatives/implied_volatility<br/>(implied_volatility)"]
+        deriv_surf["derivatives/vol_surface<br/>(build_vol_surface)"]
+
+        deriv_iv --> deriv_bs
+        deriv_surf --> deriv_bs
+        deriv_surf --> deriv_iv
+    end
+
     market_gen --> core_config
     market_gen --> core_clock
     market_gen --> events
@@ -244,6 +255,13 @@ graph TD
   `plot_monte_carlo_fan_chart` takes a `MonteCarloResult` and reuses
   `analytics.statistics.align_equity_curves` rather than re-deriving the same
   differently-sized-curves alignment logic `correlation_matrix` already solved.
+- **`derivatives` is the only package with zero `core`/`events` dependency** — drawn with the
+  same rounded node shape as `core`/`events` themselves to mark this visually. It's a pure
+  options-pricing math library (plain floats/arrays in, plain floats/arrays out), never wired
+  into the exchange/strategy/portfolio simulation loop: no options `OrderType`, no options
+  position in `Portfolio`. `implied_volatility` and `vol_surface` both depend on
+  `black_scholes` (for `OptionType` and the pricing formula they invert), but nothing outside
+  `derivatives` depends on it yet, and nothing in `derivatives` depends on anything outside it.
 - **`core/engine` is the only package that imports `core/clock`, `core/queue`, `core/models`,
   and `events` together** — it's the composition root (`RuntimeEngine` owns one of each), which
   is why `exchange/gateway` and `exchange/native` need to import `core/engine` directly (for

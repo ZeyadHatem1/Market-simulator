@@ -37,8 +37,11 @@ EventLoop
     |       position / cash / pnl                                             v
     |                                                                  Portfolio(s)
     v                                                                         |
-Visualization  <-----------  MonteCarloRunner (planned)  <---------  Analytics (Sharpe, etc.)
+Visualization  <-----------------  MonteCarloRunner  <---------------  Analytics (Sharpe, etc.)
 ```
+
+Derivatives pricing (Black-Scholes, Greeks, implied vol, vol surfaces) is a separate, standalone
+module — a pure options-pricing library, not part of this simulation pipeline.
 
 ---
 
@@ -50,8 +53,9 @@ Visualization  <-----------  MonteCarloRunner (planned)  <---------  Analytics (
 | Event queue | heapq (stdlib) |
 | Order book / matching | heapq-based, price-time priority; opt-in C++/pybind11 port |
 | Market generation | numpy (GBM, OU, Jump-Diffusion, Regime-Switching, Poisson arrivals) |
-| Analytics | pandas, numpy, scipy |
-| Visualization | matplotlib, plotly (planned) |
+| Analytics | pandas, numpy, scipy (metrics, correlation, Monte Carlo) |
+| Visualization | matplotlib (equity curves, Monte Carlo fan charts); plotly (planned — 3D vol surfaces) |
+| Derivatives | scipy (Black-Scholes, Greeks, implied volatility, vol surfaces) |
 | Optional AI layer | one of: ARIMA forecasting, z-score anomaly detection, Q-learning RL (not yet started) |
 
 ---
@@ -64,16 +68,18 @@ market-sim/
 │   ├── core/          # EventQueue, EventLoop, RuntimeEngine, SimulationClock, config/*
 │   ├── events/         # Event schemas: MarketUpdate, OrderSubmit, TradeExecution, ...
 │   ├── market/         # PriceGenerator (GBM), OU, JumpDiffusion, VolatilityRegimeModel,
-│   │                    # ShockModel, PoissonArrivalProcess, SlippageModel
+│   │                    # ShockModel, PoissonArrivalProcess, SlippageModel, SyntheticLiquidityProvider
 │   ├── exchange/        # OrderBook, MatchingEngine, ExchangeGateway, TradeLog,
 │   │                     # native/ (opt-in C++ port, identical Python-facing API)
 │   ├── strategies/      # Strategy base, MomentumStrategy, MeanReversionStrategy, RandomBaseline
 │   ├── portfolio/       # Position, PnLTracker, RiskState, Portfolio, PortfolioManager
-│   ├── analytics/       # sharpe/drawdown/calmar/win_rate, correlation_matrix, PerformanceReport
-│   │                     # (monte_carlo not yet started)
-│   ├── visualization/   # not yet started
+│   ├── analytics/       # sharpe/drawdown/calmar/win_rate, correlation_matrix, PerformanceReport,
+│   │                     # MonteCarloRunner
+│   ├── visualization/   # plot_equity_curves, plot_monte_carlo_fan_chart
+│   ├── derivatives/     # Black-Scholes pricing, Greeks, implied volatility, vol surfaces
 │   └── ai/              # not yet started — exactly one of forecasting/anomaly/rl, per ARCHITECTURE.md
-├── tests/                # core, exchange, market, strategies, portfolio, analytics, integration
+├── tests/                # core, exchange, market, strategies, portfolio, analytics, visualization,
+│                          # derivatives, integration
 ├── docs/
 │   ├── architecture/ARCHITECTURE.md   # full module map, event flow, class boundaries
 │   ├── decisions/                     # ADRs — durable rationale for placement/boundary choices
@@ -103,10 +109,20 @@ market-sim/
   cross-strategy correlation, and a strategy-comparison report — see
   [`docs/research/01_strategy_comparison.md`](docs/research/01_strategy_comparison.md) for a
   worked example.
+- **Monte Carlo**: `MonteCarloRunner` replays a strategy through N full exchange simulations
+  (varying seed), summarizing the final-PnL distribution (mean/median/std/percentiles/
+  prob-of-loss) and retaining every run's equity curve; an optional stress mode swaps in
+  regime-switching price generation and liquidity shocks.
+- **Visualization**: equity curve charts across strategies, and Monte Carlo fan charts
+  (median + percentile band across runs).
+- **Derivatives**: Black-Scholes-Merton European option pricing, closed-form Greeks
+  (delta/gamma/vega/theta/rho), an implied-volatility solver, and a vol-surface builder —
+  a standalone pricing library, not wired into the exchange as tradeable instruments.
 
-Monte Carlo stress testing, visualization, derivatives pricing, and the AI layer are planned
-next — see [`docs/architecture/ARCHITECTURE.md`](docs/architecture/ARCHITECTURE.md) for the
-full module map of what's implemented versus planned.
+The AI layer (exactly one of ARIMA forecasting, z-score anomaly detection, or Q-learning RL) is
+the one remaining Phase 3 item — see
+[`docs/architecture/ARCHITECTURE.md`](docs/architecture/ARCHITECTURE.md) for the full module map
+of what's implemented versus planned.
 
 ---
 

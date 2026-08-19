@@ -278,6 +278,43 @@ into the plotting functions themselves.
 
 ---
 
+### `src/market_sim/derivatives`
+
+Standalone options-pricing library — Black-Scholes-Merton pricing, Greeks, implied volatility,
+and vol surfaces. Pure math: takes plain floats/arrays (spot, strike, maturity, rate, vol), not
+`SimConfig`/`Event`/`Order`. Not wired into the exchange, strategies, or portfolio in any way —
+there is no options `OrderType`, no options position in `Portfolio`. Adding that would be a
+different, much larger feature (contract specs, expiry handling, options-specific order types)
+than what this step scopes; this module prices options as a research/analysis capability
+alongside `analytics/`, not as tradeable instruments in the simulation.
+
+- `derivatives/black_scholes`: `black_scholes_price(S, K, T, r, sigma, option_type, q=0.0)` —
+  the Black-Scholes-Merton European call/put formula under a continuous dividend yield
+  (`q=0.0` reduces to the plain Black-Scholes formula). `black_scholes_greeks(...)` — closed-form
+  delta/gamma/vega/theta/rho for the same contract, sharing `_d1_d2` with the pricing formula
+  rather than recomputing it. `OptionType` (CALL/PUT) is defined here and re-exported by the
+  other two submodules — a real Enum (not a type alias), so it's imported once, not duplicated
+  per file the way plain type aliases like `EquityCurve` are elsewhere in this codebase.
+- `derivatives/implied_volatility`: `implied_volatility(market_price, S, K, T, r, option_type,
+  q=0.0, sigma_bounds=(1e-6, 5.0))` — solves for sigma via Brent's method (`scipy.optimize.
+  brentq`) rather than Newton-Raphson, since Brent's bracketed search stays robust for deep
+  in/out-of-the-money contracts where vega (and therefore a Newton step) is near zero. Raises
+  `ValueError` if `market_price` isn't attainable for any sigma in `sigma_bounds` (e.g. a
+  no-arbitrage violation).
+- `derivatives/vol_surface`: `build_vol_surface(market_prices, strikes, maturities, S, r,
+  option_type, q=0.0)` — inverts a `(len(maturities), len(strikes))` grid of market option
+  prices into a matching grid of implied vols, one `implied_volatility` solve per cell. Takes
+  `market_prices` as plain input rather than generating them from an assumed smile/skew shape:
+  this simulator has no real options market data, but a caller can synthesize an example price
+  grid via `black_scholes_price` with a hand-picked vol smile and feed it back in as a
+  round-trip demonstration — keeping the function equally usable for synthetic and real data,
+  rather than baking in an invented smile parameterization.
+
+**3D vol-surface plotting is Phase 4 scope, not this step** — `build_vol_surface` returns the
+grid; rendering it is deferred alongside Phase 4's other polish items.
+
+---
+
 ### `src/market_sim/ai`
 
 Optional research layer. Added in Phase 3, after the exchange and analytics are complete.
@@ -486,6 +523,10 @@ market-sim/
 │       │   ├── performance/
 │       │   └── monte_carlo/
 │       ├── visualization/
+│       ├── derivatives/
+│       │   ├── black_scholes/
+│       │   ├── implied_volatility/
+│       │   └── vol_surface/
 │       └── ai/
 │           ├── forecasting/
 │           ├── anomaly/
@@ -498,6 +539,7 @@ market-sim/
     ├── portfolio/
     ├── analytics/
     ├── visualization/
+    ├── derivatives/
     └── integration/
 ```
 
