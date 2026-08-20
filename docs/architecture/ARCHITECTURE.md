@@ -194,6 +194,10 @@ Measurable trading strategies. These are components, not autonomous agents.
 - `strategies/momentum`: `MomentumStrategy`.
 - `strategies/mean_reversion`: `MeanReversionStrategy`.
 - `strategies/random`: `RandomBaseline` — random buy/sell, used for benchmarking.
+- `strategies/anomaly_defense`: `AnomalyDefenseStrategy` — holds a static target position under
+  normal conditions, flattens to cash whenever `ai/anomaly.AnomalyDetector` flags the latest
+  return as anomalous, re-enters once the flag clears. Risk-off only, no directional signal of
+  its own. The one place `strategies/` imports outside `core`/`events` — see `ai/anomaly` below.
 
 **Rule:** strategies react to events and submit orders via the event queue.
 They never mutate the order book or portfolio directly.
@@ -319,12 +323,25 @@ grid; rendering it is deferred alongside Phase 4's other polish items.
 ### `src/market_sim/ai`
 
 Optional research layer. Added in Phase 3, after the exchange and analytics are complete.
-Consumes historical simulation output. Does not replace the exchange core.
+Does not replace the exchange core.
 
-Choose exactly one in Phase 3:
-- **(A)** `ai/forecasting` — ARIMA forecasting → forecast-driven strategy.
-- **(B)** `ai/anomaly` — z-score anomaly detection → defensive strategy.
-- **(C)** `ai/rl` — Q-learning agent (state = price changes + position, actions = BUY/SELL/HOLD).
+Phase 3 named three candidates and required choosing exactly one — chose **(B)**:
+- **(B)** `ai/anomaly` — z-score anomaly detection → defensive strategy. **Implemented.**
+- (A) `ai/forecasting` (ARIMA forecasting → forecast-driven strategy) and (C) `ai/rl`
+  (Q-learning agent) were not built — out of scope once (B) was chosen, per this section's
+  "exactly one."
+
+- `ai/anomaly`: `AnomalyDetector` — rolling z-score over price *returns* (not raw price, which
+  carries trend/drift that would make an ordinary rally or selloff look anomalous against a
+  rolling price window). `update(price) -> bool` flags a step anomalous when the latest return's
+  z-score against the population mean/std of the trailing `window` returns exceeds `threshold`
+  in magnitude; `is_ready` reports whether enough returns have accumulated yet (`window + 1`
+  price updates, since the first update only seeds the running last-price with no return to
+  score). Pure, stdlib-only (`statistics`/`collections`), zero `market_sim` imports — no config
+  dataclass, matching `strategies/`'s own convention of taking constructor args directly rather
+  than `market/generators`' one-config-per-whole-path shape (this is called incrementally,
+  tick-by-tick, not once per run).
+- Consumer: `strategies/anomaly_defense.AnomalyDefenseStrategy` (see `strategies/` above).
 
 ---
 
@@ -513,7 +530,8 @@ market-sim/
 │       │   ├── base/
 │       │   ├── momentum/
 │       │   ├── mean_reversion/
-│       │   └── random/
+│       │   ├── random/
+│       │   └── anomaly_defense/
 │       ├── portfolio/
 │       │   ├── positions/
 │       │   ├── pnl/
@@ -529,9 +547,9 @@ market-sim/
 │       │   ├── implied_volatility/
 │       │   └── vol_surface/
 │       └── ai/
-│           ├── forecasting/
+│           ├── forecasting/    # not started, see §3
 │           ├── anomaly/
-│           └── rl/
+│           └── rl/             # not started, see §3
 └── tests/
     ├── core/
     ├── exchange/
@@ -541,6 +559,7 @@ market-sim/
     ├── analytics/
     ├── visualization/
     ├── derivatives/
+    ├── ai/
     └── integration/
 ```
 

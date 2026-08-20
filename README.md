@@ -56,7 +56,7 @@ module — a pure options-pricing library, not part of this simulation pipeline.
 | Analytics | pandas, numpy, scipy (metrics, correlation, Monte Carlo) |
 | Visualization | matplotlib (equity curves, Monte Carlo fan charts); plotly (planned — 3D vol surfaces) |
 | Derivatives | scipy (Black-Scholes, Greeks, implied volatility, vol surfaces) |
-| Optional AI layer | one of: ARIMA forecasting, z-score anomaly detection, Q-learning RL (not yet started) |
+| Optional AI layer | z-score anomaly detection → defensive strategy (chosen of: ARIMA forecasting, anomaly detection, Q-learning RL) |
 
 ---
 
@@ -71,15 +71,17 @@ market-sim/
 │   │                    # ShockModel, PoissonArrivalProcess, SlippageModel, SyntheticLiquidityProvider
 │   ├── exchange/        # OrderBook, MatchingEngine, ExchangeGateway, TradeLog,
 │   │                     # native/ (opt-in C++ port, identical Python-facing API)
-│   ├── strategies/      # Strategy base, MomentumStrategy, MeanReversionStrategy, RandomBaseline
+│   ├── strategies/      # Strategy base, MomentumStrategy, MeanReversionStrategy, RandomBaseline,
+│   │                     # AnomalyDefenseStrategy
 │   ├── portfolio/       # Position, PnLTracker, RiskState, Portfolio, PortfolioManager
 │   ├── analytics/       # sharpe/drawdown/calmar/win_rate, correlation_matrix, PerformanceReport,
 │   │                     # MonteCarloRunner
 │   ├── visualization/   # plot_equity_curves, plot_monte_carlo_fan_chart
 │   ├── derivatives/     # Black-Scholes pricing, Greeks, implied volatility, vol surfaces
-│   └── ai/              # not yet started — exactly one of forecasting/anomaly/rl, per ARCHITECTURE.md
+│   └── ai/              # anomaly/ — AnomalyDetector (rolling z-score); forecasting/, rl/ not
+│                         # started, per ARCHITECTURE.md's "choose exactly one"
 ├── tests/                # core, exchange, market, strategies, portfolio, analytics, visualization,
-│                          # derivatives, integration
+│                          # derivatives, ai, integration
 ├── docs/
 │   ├── architecture/ARCHITECTURE.md   # full module map, event flow, class boundaries
 │   ├── decisions/                     # ADRs — durable rationale for placement/boundary choices
@@ -101,8 +103,9 @@ market-sim/
   differential-tested against the Python implementation as the correctness oracle.
 - **Market generation**: GBM, Ornstein-Uhlenbeck (mean-reverting), Merton jump-diffusion,
   Markov regime-switching GBM, Poisson order-arrival timing, and a liquidity-shock process.
-- **Strategies**: momentum, mean-reversion, and a random baseline, all pluggable into the
-  exchange with zero extra wiring code.
+- **Strategies**: momentum, mean-reversion, a random baseline, and an anomaly-defense strategy
+  (flattens to cash on a detected volatility spike, re-enters once it clears), all pluggable into
+  the exchange with zero extra wiring code.
 - **Portfolio**: per-strategy position/cash/PnL tracking (weighted-average cost basis),
   drawdown and exposure state, isolated across strategies via `PortfolioManager`.
 - **Analytics**: Sharpe, max drawdown, Calmar, win rate, rolling volatility, VaR 95%,
@@ -118,11 +121,14 @@ market-sim/
 - **Derivatives**: Black-Scholes-Merton European option pricing, closed-form Greeks
   (delta/gamma/vega/theta/rho), an implied-volatility solver, and a vol-surface builder —
   a standalone pricing library, not wired into the exchange as tradeable instruments.
+- **AI layer**: `AnomalyDetector` — rolling z-score over price returns, consumed by
+  `AnomalyDefenseStrategy` (see Strategies above). Chosen of the three Phase 3 candidates
+  (ARIMA forecasting, anomaly detection, Q-learning RL); the other two were not built, per
+  ARCHITECTURE.md's "choose exactly one."
 
-The AI layer (exactly one of ARIMA forecasting, z-score anomaly detection, or Q-learning RL) is
-the one remaining Phase 3 item — see
+This closes out Phase 3 — see
 [`docs/architecture/ARCHITECTURE.md`](docs/architecture/ARCHITECTURE.md) for the full module map
-of what's implemented versus planned.
+of what's implemented.
 
 ---
 

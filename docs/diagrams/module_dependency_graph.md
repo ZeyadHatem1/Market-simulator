@@ -1,8 +1,8 @@
 # Module Dependency Graph
 
 Generated from actual `from market_sim...` imports in `src/market_sim` (grepped directly, not
-copied from `ARCHITECTURE.md` §3's module map). `ai/*` has no code yet and is omitted; every
-other package named in §3 now has an implementation and is included.
+copied from `ARCHITECTURE.md` §3's module map). `ai/forecasting` and `ai/rl` have no code yet and
+are omitted; every other package named in §3 now has an implementation and is included.
 
 ### Package-level view
 
@@ -17,7 +17,8 @@ graph TD
     events(["events<br/>(Event, market_update, order_submit, ...)"])
     market["market<br/>(generators, arrivals, regimes, shocks, microstructure, liquidity)"]
     exchange["exchange<br/>(orderbook, matching, validation, execution, gateway, native)"]
-    strategies["strategies<br/>(base, momentum, mean_reversion, random)"]
+    strategies["strategies<br/>(base, momentum, mean_reversion, random, anomaly_defense)"]
+    ai(["ai<br/>(anomaly)"])
     portfolio["portfolio<br/>(positions, pnl, risk, manager)"]
     analytics["analytics<br/>(metrics, statistics, performance, monte_carlo)"]
     visualization["visualization<br/>(equity_curve_plot, monte_carlo_fan_chart)"]
@@ -32,6 +33,7 @@ graph TD
     market --> exchange
     strategies --> core
     strategies --> events
+    strategies --> ai
     portfolio --> core
     portfolio --> events
     analytics --> portfolio
@@ -113,10 +115,16 @@ graph TD
         strat_mom["strategies/momentum"]
         strat_mr["strategies/mean_reversion"]
         strat_rand["strategies/random"]
+        strat_anomaly["strategies/anomaly_defense<br/>(AnomalyDefenseStrategy)"]
 
         strat_mom --> strat_base
         strat_mr --> strat_base
         strat_rand --> strat_base
+        strat_anomaly --> strat_base
+    end
+
+    subgraph pkg_ai["ai (isolated - no core/events dependency)"]
+        ai_anomaly(["ai/anomaly<br/>(AnomalyDetector)"])
     end
 
     subgraph pkg_portfolio["portfolio"]
@@ -190,6 +198,7 @@ graph TD
     strat_base --> core_clock
     strat_base --> core_models
     strat_base --> events
+    strat_anomaly --> ai_anomaly
 
     port_core --> core_models
     port_core --> events
@@ -263,6 +272,13 @@ graph TD
   `black_scholes` (for `OptionType` and the pricing formula they invert), but nothing outside
   `derivatives` depends on it yet, and nothing in `derivatives` depends on anything outside it.
   See `docs/decisions/ADR-008-derivatives-isolation-boundary.md`.
+- **`strategies` now imports outside `core`/`events` for the first time**: `strategies/
+  anomaly_defense.AnomalyDefenseStrategy` imports `ai.anomaly.AnomalyDetector` for its z-score
+  logic. `ai/anomaly` itself has zero `market_sim` imports (pure `statistics`/`collections`
+  arithmetic on a rolling return window) — drawn with the same rounded node shape as `core`/
+  `events`/`derivatives` to mark it as a second fully-isolated leaf package. This does not
+  violate the "`exchange`/`strategies`/`portfolio` never import each other" rule — `ai` isn't one
+  of those three peers, same reasoning as `exchange`'s dependency on `market`.
 - **`core/engine` is the only package that imports `core/clock`, `core/queue`, `core/models`,
   and `events` together** — it's the composition root (`RuntimeEngine` owns one of each), which
   is why `exchange/gateway` and `exchange/native` need to import `core/engine` directly (for
