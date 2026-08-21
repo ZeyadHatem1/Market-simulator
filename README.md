@@ -54,7 +54,7 @@ module — a pure options-pricing library, not part of this simulation pipeline.
 | Order book / matching | heapq-based, price-time priority; opt-in C++/pybind11 port |
 | Market generation | numpy (GBM, OU, Jump-Diffusion, Regime-Switching, Poisson arrivals) |
 | Analytics | pandas, numpy, scipy (metrics, correlation, Monte Carlo) |
-| Visualization | matplotlib (equity curves, Monte Carlo fan charts); plotly (planned — 3D vol surfaces) |
+| Visualization | matplotlib (equity curves, Monte Carlo fan charts); plotly (3D vol surfaces) |
 | Derivatives | scipy (Black-Scholes, Greeks, implied volatility, vol surfaces) |
 | Optional AI layer | z-score anomaly detection → defensive strategy (chosen of: ARIMA forecasting, anomaly detection, Q-learning RL) |
 
@@ -76,7 +76,7 @@ market-sim/
 │   ├── portfolio/       # Position, PnLTracker, RiskState, Portfolio, PortfolioManager
 │   ├── analytics/       # sharpe/drawdown/calmar/win_rate, correlation_matrix, PerformanceReport,
 │   │                     # MonteCarloRunner
-│   ├── visualization/   # plot_equity_curves, plot_monte_carlo_fan_chart
+│   ├── visualization/   # plot_equity_curves, plot_monte_carlo_fan_chart, plot_vol_surface
 │   ├── derivatives/     # Black-Scholes pricing, Greeks, implied volatility, vol surfaces
 │   └── ai/              # anomaly/ — AnomalyDetector (rolling z-score); forecasting/, rl/ not
 │                         # started, per ARCHITECTURE.md's "choose exactly one"
@@ -116,8 +116,8 @@ market-sim/
   (varying seed), summarizing the final-PnL distribution (mean/median/std/percentiles/
   prob-of-loss) and retaining every run's equity curve; an optional stress mode swaps in
   regime-switching price generation and liquidity shocks.
-- **Visualization**: equity curve charts across strategies, and Monte Carlo fan charts
-  (median + percentile band across runs).
+- **Visualization**: equity curve charts across strategies, Monte Carlo fan charts
+  (median + percentile band across runs), and an interactive 3D implied-volatility surface plot.
 - **Derivatives**: Black-Scholes-Merton European option pricing, closed-form Greeks
   (delta/gamma/vega/theta/rho), an implied-volatility solver, and a vol-surface builder —
   a standalone pricing library, not wired into the exchange as tradeable instruments.

@@ -262,10 +262,12 @@ First write-up using this layer: `docs/research/01_strategy_comparison.md` (back
 ### `src/market_sim/visualization`
 
 Charts and dashboards. Plain functions, not classes — no per-instance state a chart needs to
-hold beyond its inputs, consistent with `analytics/`'s pure-function style. Each function
-returns a matplotlib `Figure` rather than saving it; the caller decides whether/how to persist
-it (`fig.savefig(path)`), which is how "saveable as PNG" is satisfied without baking file I/O
-into the plotting functions themselves.
+hold beyond its inputs, consistent with `analytics/`'s pure-function style. `plot_equity_curves`
+and `plot_monte_carlo_fan_chart` return a matplotlib `Figure` rather than saving it, the caller
+deciding whether/how to persist it (`fig.savefig(path)`); `plot_vol_surface` returns a plotly
+`Figure` instead (`fig.write_image(path)` for a static image, `fig.show()`/`fig.write_html(path)`
+for the interactive version) — 2D static charts stay matplotlib, but a 3D vol surface is
+specifically what the stack table earmarks plotly for.
 
 - `plot_equity_curves` — all strategies on one chart. Takes `dict[strategy_id, equity_curve]`,
   the same shape `PortfolioManager.equity_curves()` and `analytics.statistics.correlation_matrix`
@@ -276,9 +278,15 @@ into the plotting functions themselves.
   the same reason `correlation_matrix` needs it: runs that trade a different number of times
   produce differently-sized equity curves even when every run shares the same underlying tick
   timestamps.
+- `plot_vol_surface` — 3D surface plot (`plotly.graph_objects.Surface`) of
+  `derivatives.vol_surface.VolSurface.implied_vols` over (strike, maturity). The first
+  `visualization` function to depend on `derivatives` rather than `analytics`. Raises if either
+  axis of the surface is empty; otherwise a thin wrapper — the grid shape is already exactly
+  what `go.Surface(x=strikes, y=maturities, z=implied_vols)` expects, no reshaping needed.
 - `OrderBookSnapshot` (bar chart of bid/ask depth) and `StrategyDashboard` (comparison view:
-  returns, Sharpe, drawdown, win rate) — not started. Out of scope for Phase 3's "first working
-  charts" step; revisit alongside Phase 4 polish.
+  returns, Sharpe, drawdown, win rate) — still not started; no simulation-time consumer needs
+  them yet, unlike `plot_vol_surface` which had a concrete data contract (`VolSurface`) waiting
+  on it.
 
 ---
 
@@ -315,8 +323,8 @@ alongside `analytics/`, not as tradeable instruments in the simulation. See
   round-trip demonstration — keeping the function equally usable for synthetic and real data,
   rather than baking in an invented smile parameterization.
 
-**3D vol-surface plotting is Phase 4 scope, not this step** — `build_vol_surface` returns the
-grid; rendering it is deferred alongside Phase 4's other polish items.
+3D vol-surface plotting is `visualization.plot_vol_surface` (see `visualization/` above) — this
+module itself stays rendering-free, `build_vol_surface` only ever returns the grid.
 
 ---
 

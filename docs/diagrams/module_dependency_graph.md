@@ -21,7 +21,7 @@ graph TD
     ai(["ai<br/>(anomaly)"])
     portfolio["portfolio<br/>(positions, pnl, risk, manager)"]
     analytics["analytics<br/>(metrics, statistics, performance, monte_carlo)"]
-    visualization["visualization<br/>(equity_curve_plot, monte_carlo_fan_chart)"]
+    visualization["visualization<br/>(equity_curve_plot, monte_carlo_fan_chart, vol_surface_plot)"]
     derivatives(["derivatives<br/>(black_scholes, implied_volatility, vol_surface)"])
 
     events --> core
@@ -41,6 +41,7 @@ graph TD
     analytics --> market
     analytics --> strategies
     visualization --> analytics
+    visualization --> derivatives
 
     exchange -.->|"MARKET_UPDATE / TRADE_EXECUTION<br/>handlers (hand-registered)"| strategies
     exchange -.->|"TRADE_EXECUTION handler<br/>(hand-registered)"| portfolio
@@ -150,6 +151,7 @@ graph TD
     subgraph pkg_viz["visualization"]
         viz_equity["visualization/equity_curve_plot<br/>(plot_equity_curves)"]
         viz_fan["visualization/monte_carlo_fan_chart<br/>(plot_monte_carlo_fan_chart)"]
+        viz_vol["visualization/vol_surface_plot<br/>(plot_vol_surface)"]
     end
 
     subgraph pkg_deriv["derivatives (isolated - no core/events dependency)"]
@@ -214,6 +216,7 @@ graph TD
 
     viz_fan --> an_mc
     viz_fan --> an_stats
+    viz_vol --> deriv_surf
 
     exch_gw -.->|"MARKET_UPDATE handler<br/>(hand-registered)"| strat_base
     strat_base -.->|"ORDER_SUBMIT pushed to queue"| exch_gw
@@ -258,12 +261,16 @@ graph TD
   `analytics/statistics` are pure functions with no `market_sim` imports at all: they operate on
   the plain `list[tuple[timestamp, equity]]` shape `Portfolio.equity_curve` produces, not on
   `Portfolio` objects themselves.
-- **`visualization` is a leaf that only depends on `analytics`, never on `exchange`/`market`/
-  `strategies`/`portfolio` directly.** `plot_equity_curves` takes the plain
+- **`visualization` is a leaf that only depends on `analytics` and `derivatives`, never on
+  `exchange`/`market`/`strategies`/`portfolio` directly.** `plot_equity_curves` takes the plain
   `dict[strategy_id, equity_curve]` shape (no imports needed beyond matplotlib);
   `plot_monte_carlo_fan_chart` takes a `MonteCarloResult` and reuses
   `analytics.statistics.align_equity_curves` rather than re-deriving the same
   differently-sized-curves alignment logic `correlation_matrix` already solved.
+  `plot_vol_surface` (plotly, not matplotlib — the one 3D/interactive chart) takes a
+  `derivatives.vol_surface.VolSurface` directly, the first `visualization` edge into
+  `derivatives` — `derivatives` stays a leaf itself even so, since the edge only runs one
+  direction and nothing in `derivatives` imports `visualization` back.
 - **`derivatives` is the only package with zero `core`/`events` dependency** — drawn with the
   same rounded node shape as `core`/`events` themselves to mark this visually. It's a pure
   options-pricing math library (plain floats/arrays in, plain floats/arrays out), never wired
