@@ -184,11 +184,14 @@ and visualization stay pure Python permanently — this boundary does not move.
   (`tests/exchange/test_native_differential.py`), not by manual inspection. Full rationale in
   `docs/decisions/ADR-005-native-matching-engine-boundary.md`.
 
-**Profiling**: `docs/research/02_profiling.md` measures the native engine's actual speedup
-(2.10x on a 20,000-order replay) and profiles `MonteCarloRunner` at a realistic batch size — it
-also documents one real, unfixed inefficiency in `_match_market` (an unconditional liquidity
-snapshot, unused whenever no `slippage_model` is set) found by comparing against
-`exchange/native/adapter.py`'s already-correct equivalent guard.
+**Profiling**: `docs/research/02_profiling.md` profiled `_match_market` and found it
+unconditionally computed an O(book-depth) liquidity snapshot even when no `slippage_model` was
+set — a real bug, confirmed (not guessed) by comparing against `exchange/native/adapter.py`'s
+already-correct `needs_slippage` guard, and fixed in the same pass (13.6x faster on the
+benchmark replay; `MonteCarloRunner.run()` 1.6x faster on a 100-run batch). The fix also
+surfaced a genuinely surprising second result: with the dead computation gone, pure Python now
+outperforms the native engine on that order mix — see the doc for why (per-`match()`-call
+pybind11 boundary-crossing overhead, not a general "native is slower" claim).
 
 ---
 

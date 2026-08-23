@@ -100,9 +100,11 @@ market-sim/
 
 - **Exchange**: price-time-priority order book, deterministic matching (limit + market orders,
   partial fills, cancellation), linear slippage on market-order fills, opt-in C++ port
-  differential-tested against the Python implementation as the correctness oracle — measured at
-  2.10x faster than pure Python on a 20,000-order replay, see
-  [`docs/research/02_profiling.md`](docs/research/02_profiling.md).
+  differential-tested against the Python implementation as the correctness oracle. Profiling
+  (see [`docs/research/02_profiling.md`](docs/research/02_profiling.md)) found and fixed a real
+  inefficiency in the pure-Python matching engine (13.6x faster on the benchmark replay after
+  the fix) — relative speed vs. the native port turned out to be workload-shape-dependent, not
+  a fixed number; see the doc for details.
 - **Market generation**: GBM, Ornstein-Uhlenbeck (mean-reverting), Merton jump-diffusion,
   Markov regime-switching GBM, Poisson order-arrival timing, and a liquidity-shock process.
 - **Strategies**: momentum, mean-reversion, a random baseline, and an anomaly-defense strategy

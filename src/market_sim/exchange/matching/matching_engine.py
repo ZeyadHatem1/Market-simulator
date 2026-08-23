@@ -45,7 +45,9 @@ class MatchingEngine:
                 resting = book.pop_best_bid()
 
             fills.append(
-                self._execute(incoming, resting, timestamp, sequence, trade_id, fill_count)
+                self._execute(
+                    incoming, resting, timestamp, sequence, trade_id, fill_count
+                )
             )
             fill_count += 1
 
@@ -69,13 +71,25 @@ class MatchingEngine:
         fill_count = 0
         # snapshot taken once, before any fills for this order, so the model
         # is a pure function of the incoming order and the pre-trade book —
-        # slippage does not compound across an order's own fills
-        available_liquidity = (
-            book.ask_liquidity() if incoming.side == Side.BUY else book.bid_liquidity()
-        )
+        # slippage does not compound across an order's own fills. Skipped
+        # entirely when no slippage_model is configured, mirroring
+        # exchange/native/adapter.py's needs_slippage guard — an O(book
+        # depth) sum nobody reads is a real, measured cost (see
+        # docs/research/02_profiling.md).
+        available_liquidity = None
+        if self._slippage_model is not None:
+            available_liquidity = (
+                book.ask_liquidity()
+                if incoming.side == Side.BUY
+                else book.bid_liquidity()
+            )
 
         while not incoming.is_filled:
-            resting = book.pop_best_ask() if incoming.side == Side.BUY else book.pop_best_bid()
+            resting = (
+                book.pop_best_ask()
+                if incoming.side == Side.BUY
+                else book.pop_best_bid()
+            )
             if resting is None:
                 break
 
@@ -90,7 +104,13 @@ class MatchingEngine:
 
             fills.append(
                 self._execute(
-                    incoming, resting, timestamp, sequence, trade_id, fill_count, fill_price
+                    incoming,
+                    resting,
+                    timestamp,
+                    sequence,
+                    trade_id,
+                    fill_count,
+                    fill_price,
                 )
             )
             fill_count += 1
