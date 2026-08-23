@@ -184,6 +184,12 @@ and visualization stay pure Python permanently — this boundary does not move.
   (`tests/exchange/test_native_differential.py`), not by manual inspection. Full rationale in
   `docs/decisions/ADR-005-native-matching-engine-boundary.md`.
 
+**Profiling**: `docs/research/02_profiling.md` measures the native engine's actual speedup
+(2.10x on a 20,000-order replay) and profiles `MonteCarloRunner` at a realistic batch size — it
+also documents one real, unfixed inefficiency in `_match_market` (an unconditional liquidity
+snapshot, unused whenever no `slippage_model` is set) found by comparing against
+`exchange/native/adapter.py`'s already-correct equivalent guard.
+
 ---
 
 ### `src/market_sim/strategies`
@@ -253,7 +259,9 @@ of simulation state.
   `docs/decisions/ADR-007-liquidity-provider-placement.md`.
 
 First write-up using this layer: `docs/research/01_strategy_comparison.md` (backing notebook:
-`notebooks/02_strategy_comparison.ipynb`).
+`notebooks/02_strategy_comparison.ipynb`). `MonteCarloRunner.run()`'s own wall-clock profile
+(where its time actually goes at a 100-run batch size) is in
+`docs/research/02_profiling.md` (backing notebook: `notebooks/03_profiling.ipynb`).
 
 **Rule:** analytics is purely downstream. It reads simulation output. It never alters execution.
 

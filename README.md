@@ -100,7 +100,9 @@ market-sim/
 
 - **Exchange**: price-time-priority order book, deterministic matching (limit + market orders,
   partial fills, cancellation), linear slippage on market-order fills, opt-in C++ port
-  differential-tested against the Python implementation as the correctness oracle.
+  differential-tested against the Python implementation as the correctness oracle — measured at
+  2.10x faster than pure Python on a 20,000-order replay, see
+  [`docs/research/02_profiling.md`](docs/research/02_profiling.md).
 - **Market generation**: GBM, Ornstein-Uhlenbeck (mean-reverting), Merton jump-diffusion,
   Markov regime-switching GBM, Poisson order-arrival timing, and a liquidity-shock process.
 - **Strategies**: momentum, mean-reversion, a random baseline, and an anomaly-defense strategy
