@@ -34,6 +34,7 @@ def make_model(config: RegimeConfig) -> VolatilityRegimeModel:
 
 # --- generate() tests ---
 
+
 def test_output_length_matches_n_steps():
     config = make_config(n_steps=100)
     model = make_model(config)
@@ -88,6 +89,7 @@ def test_sequences_are_unique_and_increasing():
 
 # --- price_path() tests ---
 
+
 def test_price_path_length():
     config = make_config(n_steps=100)
     model = make_model(config)
@@ -110,6 +112,7 @@ def test_price_path_same_seed_reproducible():
 
 
 # --- regime_path() tests ---
+
 
 def test_regime_path_length():
     config = make_config(n_steps=100)
@@ -162,6 +165,7 @@ def test_regime_path_consistent_with_price_path():
 
 
 # --- correctness: sticky single-regime reduces to plain GBM ---
+
 
 def test_always_self_looping_regime_matches_plain_gbm():
     mu, sigma, seed, n_steps, dt = 0.08, 0.25, 5, 200, 1 / 252
@@ -230,6 +234,7 @@ def test_high_vol_regime_produces_larger_moves_than_low_vol():
 
 
 # --- RegimeConfig validation tests ---
+
 
 def test_empty_regimes_raises():
     with pytest.raises(ValueError):

@@ -17,7 +17,9 @@ class RiskState:
     def update(self, equity: float) -> None:
         self.peak_equity = max(self.peak_equity, equity)
         self.current_drawdown = (
-            0.0 if self.peak_equity == 0 else (self.peak_equity - equity) / self.peak_equity
+            0.0
+            if self.peak_equity == 0
+            else (self.peak_equity - equity) / self.peak_equity
         )
         self.max_drawdown = max(self.max_drawdown, self.current_drawdown)
 

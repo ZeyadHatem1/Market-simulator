@@ -5,7 +5,9 @@ from market_sim.events import market_update, trade_execution
 from market_sim.portfolio import Portfolio, PortfolioManager
 
 
-def make_fill(price: float, quantity: float, buy_order_id: str, sell_order_id: str, timestamp=1.0):
+def make_fill(
+    price: float, quantity: float, buy_order_id: str, sell_order_id: str, timestamp=1.0
+):
     return trade_execution(
         timestamp=timestamp,
         sequence=1,
@@ -24,7 +26,9 @@ def make_tick(price: float, timestamp: float):
 def test_build_report_reflects_portfolio_state():
     portfolio = Portfolio(strategy_id="s1", initial_cash=10_000.0)
     portfolio.track_order("buy-1")
-    portfolio.on_fill(make_fill(100.0, 10.0, buy_order_id="buy-1", sell_order_id="other"))
+    portfolio.on_fill(
+        make_fill(100.0, 10.0, buy_order_id="buy-1", sell_order_id="other")
+    )
     portfolio.on_market_update(make_tick(110.0, timestamp=2.0))
 
     report = build_report(portfolio, periods_per_year=252)

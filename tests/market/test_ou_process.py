@@ -28,6 +28,7 @@ def make_process(config: OUConfig) -> OrnsteinUhlenbeckProcess:
 
 # --- generate() tests ---
 
+
 def test_output_length_matches_n_steps():
     config = make_config(n_steps=100)
     process = make_process(config)
@@ -82,6 +83,7 @@ def test_sequences_are_unique_and_increasing():
 
 # --- value_path() tests ---
 
+
 def test_value_path_length():
     config = make_config(n_steps=100)
     process = make_process(config)
@@ -106,11 +108,14 @@ def test_value_path_same_seed_reproducible():
 
 # --- mean-reversion correctness ---
 
+
 def test_zero_volatility_converges_deterministically_to_mu():
     # With sigma=0 the process is a deterministic ODE solution — this is the
     # property that distinguishes OU from GBM and must hold exactly, not
     # just "on average" over a stochastic sample.
-    config = make_config(sigma=0.0, theta=5.0, initial_value=50.0, mu=10.0, n_steps=1000, dt=0.01)
+    config = make_config(
+        sigma=0.0, theta=5.0, initial_value=50.0, mu=10.0, n_steps=1000, dt=0.01
+    )
     process = make_process(config)
     path = process.value_path()
     assert path[-1] == pytest.approx(10.0, abs=1e-6)
@@ -127,6 +132,7 @@ def test_process_pulls_toward_mean_over_time():
 
 
 # --- OUConfig validation tests ---
+
 
 def test_invalid_theta_raises():
     with pytest.raises(ValueError):

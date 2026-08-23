@@ -37,10 +37,13 @@ def make_strategy(**overrides) -> _AlwaysBuyStrategy:
 
 
 def make_market_update(timestamp: float, price: float, sequence: int = 0):
-    return market_update(timestamp=timestamp, sequence=sequence, price=price, instrument="SIM")
+    return market_update(
+        timestamp=timestamp, sequence=sequence, price=price, instrument="SIM"
+    )
 
 
 # --- initial state ---
+
 
 def test_initial_state():
     strategy = make_strategy(initial_cash=5_000.0)
@@ -50,6 +53,7 @@ def test_initial_state():
 
 
 # --- _submit() ---
+
 
 def test_submit_produces_order_submit_event():
     strategy = make_strategy()
@@ -79,6 +83,7 @@ def test_submit_uses_clock_for_sequence():
 
 
 # --- on_fill() / fill attribution ---
+
 
 def test_fill_for_own_buy_order_updates_position_and_cash():
     strategy = make_strategy(initial_cash=10_000.0)
@@ -138,6 +143,7 @@ def test_fill_for_someone_elses_order_is_ignored():
 
 
 # --- mark-to-market pnl ---
+
 
 def test_pnl_marks_to_market_on_every_tick_even_without_fills():
     strategy = make_strategy(initial_cash=10_000.0)

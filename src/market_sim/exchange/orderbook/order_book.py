@@ -64,10 +64,18 @@ class OrderBook:
         return sum(1 for _, _, o in self._asks if o.order_id not in self._cancelled)
 
     def bid_liquidity(self) -> float:
-        return sum(o.remaining_quantity for _, _, o in self._bids if o.order_id not in self._cancelled)
+        return sum(
+            o.remaining_quantity
+            for _, _, o in self._bids
+            if o.order_id not in self._cancelled
+        )
 
     def ask_liquidity(self) -> float:
-        return sum(o.remaining_quantity for _, _, o in self._asks if o.order_id not in self._cancelled)
+        return sum(
+            o.remaining_quantity
+            for _, _, o in self._asks
+            if o.order_id not in self._cancelled
+        )
 
     def spread(self) -> float | None:
         bb, ba = self.best_bid(), self.best_ask()

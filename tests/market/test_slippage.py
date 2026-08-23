@@ -20,7 +20,10 @@ def test_bps_zero_when_no_liquidity():
 def test_apply_moves_buy_price_up():
     model = SlippageModel(coefficient=100.0)  # 1% at full depth, for easy arithmetic
     price = model.apply(
-        reference_price=100.0, order_quantity=100.0, available_liquidity=100.0, side=Side.BUY
+        reference_price=100.0,
+        order_quantity=100.0,
+        available_liquidity=100.0,
+        side=Side.BUY,
     )
     assert price == pytest.approx(101.0)
 
@@ -28,7 +31,10 @@ def test_apply_moves_buy_price_up():
 def test_apply_moves_sell_price_down():
     model = SlippageModel(coefficient=100.0)
     price = model.apply(
-        reference_price=100.0, order_quantity=100.0, available_liquidity=100.0, side=Side.SELL
+        reference_price=100.0,
+        order_quantity=100.0,
+        available_liquidity=100.0,
+        side=Side.SELL,
     )
     assert price == pytest.approx(99.0)
 
@@ -36,7 +42,10 @@ def test_apply_moves_sell_price_down():
 def test_apply_with_zero_coefficient_is_a_no_op():
     model = SlippageModel(coefficient=0.0)
     price = model.apply(
-        reference_price=100.0, order_quantity=50.0, available_liquidity=10.0, side=Side.BUY
+        reference_price=100.0,
+        order_quantity=50.0,
+        available_liquidity=10.0,
+        side=Side.BUY,
     )
     assert price == 100.0
 

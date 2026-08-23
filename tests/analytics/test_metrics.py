@@ -16,6 +16,7 @@ def curve(values: list[float]) -> list[tuple[float, float]]:
 
 # --- sharpe ---
 
+
 def test_sharpe_too_short_returns_zero():
     assert sharpe(curve([100.0]), periods_per_year=252) == 0.0
     assert sharpe(curve([100.0, 110.0]), periods_per_year=252) == 0.0
@@ -39,6 +40,7 @@ def test_sharpe_scales_with_sqrt_periods_per_year():
 
 # --- max_drawdown ---
 
+
 def test_max_drawdown_empty_curve_is_zero():
     assert max_drawdown([]) == 0.0
 
@@ -54,6 +56,7 @@ def test_max_drawdown_matches_hand_computed_value():
 
 # --- calmar ---
 
+
 def test_calmar_no_drawdown_returns_zero():
     assert calmar(curve([100.0, 110.0, 120.0]), periods_per_year=252) == 0.0
 
@@ -64,6 +67,7 @@ def test_calmar_matches_hand_computed_value():
 
 
 # --- rolling_volatility ---
+
 
 def test_rolling_volatility_rejects_window_below_two():
     with pytest.raises(ValueError):
@@ -83,6 +87,7 @@ def test_rolling_volatility_produces_one_value_per_full_window():
 
 # --- var_95 ---
 
+
 def test_var_95_empty_curve_is_zero():
     assert var_95([]) == 0.0
 
@@ -97,6 +102,7 @@ def test_var_95_matches_hand_computed_value():
 
 
 # --- win_rate ---
+
 
 def test_win_rate_no_closed_trades_is_zero():
     assert win_rate([]) == 0.0

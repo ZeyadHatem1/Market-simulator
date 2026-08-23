@@ -11,7 +11,9 @@ class Order:
     timestamp: float
     price: float | None = None
     filled_quantity: float = 0.0
-    seq: int | None = None  # set by OrderBook on insert; preserved across partial re-inserts
+    seq: int | None = (
+        None  # set by OrderBook on insert; preserved across partial re-inserts
+    )
 
     def __post_init__(self) -> None:
         if self.quantity <= 0:

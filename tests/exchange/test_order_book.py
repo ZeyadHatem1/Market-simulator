@@ -3,7 +3,9 @@ from market_sim.exchange.orderbook import Order, OrderBook
 from market_sim.core.models import Side, OrderType
 
 
-def make_limit(order_id: str, side: Side, price: float, quantity: float = 10.0) -> Order:
+def make_limit(
+    order_id: str, side: Side, price: float, quantity: float = 10.0
+) -> Order:
     return Order(
         order_id=order_id,
         side=side,
@@ -93,11 +95,23 @@ def test_liquidity_zero_on_empty_side():
 
 def test_invalid_quantity_raises():
     with pytest.raises(ValueError):
-        Order(order_id="x", side=Side.BUY, order_type=OrderType.LIMIT,
-              price=100.0, quantity=0.0, timestamp=1.0)
+        Order(
+            order_id="x",
+            side=Side.BUY,
+            order_type=OrderType.LIMIT,
+            price=100.0,
+            quantity=0.0,
+            timestamp=1.0,
+        )
 
 
 def test_limit_order_without_price_raises():
     with pytest.raises(ValueError):
-        Order(order_id="x", side=Side.BUY, order_type=OrderType.LIMIT,
-              price=None, quantity=10.0, timestamp=1.0)
+        Order(
+            order_id="x",
+            side=Side.BUY,
+            order_type=OrderType.LIMIT,
+            price=None,
+            quantity=10.0,
+            timestamp=1.0,
+        )

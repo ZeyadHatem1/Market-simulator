@@ -94,8 +94,12 @@ class VolatilityRegimeModel:
             mu, sigma = cfg.regimes[current]
             drift = (mu - 0.5 * sigma**2) * cfg.dt
             diffusion_scale = sigma * np.sqrt(cfg.dt)
-            prices[i + 1] = prices[i] * np.exp(drift + diffusion_scale * diffusion_draws[i])
+            prices[i + 1] = prices[i] * np.exp(
+                drift + diffusion_scale * diffusion_draws[i]
+            )
 
-            current = rng.choice(regime_names, p=cfg.transition_matrix[index_of[current]])
+            current = rng.choice(
+                regime_names, p=cfg.transition_matrix[index_of[current]]
+            )
 
         return prices, regimes_used

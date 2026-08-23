@@ -4,7 +4,9 @@ from market_sim.events import market_update, trade_execution
 from market_sim.portfolio import PortfolioManager
 
 
-def make_fill(price: float, quantity: float, buy_order_id: str, sell_order_id: str, timestamp=1.0):
+def make_fill(
+    price: float, quantity: float, buy_order_id: str, sell_order_id: str, timestamp=1.0
+):
     return trade_execution(
         timestamp=timestamp,
         sequence=1,
@@ -51,7 +53,9 @@ def test_on_fill_only_updates_the_owning_portfolio():
     portfolio_b = manager.register_strategy("b", initial_cash=10_000.0)
     portfolio_a.track_order("a-order")
 
-    manager.on_fill(make_fill(100.0, 10.0, buy_order_id="a-order", sell_order_id="counterparty"))
+    manager.on_fill(
+        make_fill(100.0, 10.0, buy_order_id="a-order", sell_order_id="counterparty")
+    )
 
     assert portfolio_a.position_quantity == 10.0
     assert portfolio_b.position_quantity == 0.0

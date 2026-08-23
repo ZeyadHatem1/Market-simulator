@@ -17,8 +17,7 @@ from market_sim.strategies import Strategy
 
 
 class PriceGeneratorLike(Protocol):
-    def generate(self) -> list[Event]:
-        ...
+    def generate(self) -> list[Event]: ...
 
 
 StrategyFactory = Callable[[SimulationClock, Callable[[], str]], Strategy]

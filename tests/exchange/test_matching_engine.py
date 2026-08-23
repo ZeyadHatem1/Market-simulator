@@ -7,7 +7,9 @@ from market_sim.core.models import EventType
 from market_sim.market.microstructure import SlippageModel
 
 
-def make_limit(order_id: str, side: Side, price: float, quantity: float = 10.0) -> Order:
+def make_limit(
+    order_id: str, side: Side, price: float, quantity: float = 10.0
+) -> Order:
     return Order(
         order_id=order_id,
         side=side,
@@ -28,7 +30,9 @@ def make_market(order_id: str, side: Side, quantity: float = 10.0) -> Order:
     )
 
 
-def match(incoming: Order, book: OrderBook, slippage_model: SlippageModel | None = None) -> list:
+def match(
+    incoming: Order, book: OrderBook, slippage_model: SlippageModel | None = None
+) -> list:
     engine = MatchingEngine(slippage_model=slippage_model)
     return engine.match(incoming, book, timestamp=1.0, sequence=0, trade_id="t1")
 
@@ -189,7 +193,9 @@ def test_slippage_moves_market_buy_price_against_aggressor():
     book = OrderBook()
     book.insert(make_limit("a1", Side.SELL, 100.0, quantity=10.0))
     model = SlippageModel(coefficient=100.0)  # order == full depth -> 1% impact
-    fills = match(make_market("m1", Side.BUY, quantity=10.0), book, slippage_model=model)
+    fills = match(
+        make_market("m1", Side.BUY, quantity=10.0), book, slippage_model=model
+    )
     assert fills[0].data["price"] == pytest.approx(101.0)
 
 
@@ -197,7 +203,9 @@ def test_slippage_moves_market_sell_price_against_aggressor():
     book = OrderBook()
     book.insert(make_limit("b1", Side.BUY, 100.0, quantity=10.0))
     model = SlippageModel(coefficient=100.0)
-    fills = match(make_market("m1", Side.SELL, quantity=10.0), book, slippage_model=model)
+    fills = match(
+        make_market("m1", Side.SELL, quantity=10.0), book, slippage_model=model
+    )
     assert fills[0].data["price"] == pytest.approx(99.0)
 
 
@@ -208,7 +216,9 @@ def test_slippage_uses_pretrade_liquidity_snapshot_across_levels():
     # total ask liquidity = 10, order size = 10 -> 1% impact applied to each level's
     # own reference price, using the same pre-trade snapshot for both fills
     model = SlippageModel(coefficient=100.0)
-    fills = match(make_market("m1", Side.BUY, quantity=10.0), book, slippage_model=model)
+    fills = match(
+        make_market("m1", Side.BUY, quantity=10.0), book, slippage_model=model
+    )
     assert len(fills) == 2
     assert fills[0].data["price"] == pytest.approx(101.0)
     assert fills[1].data["price"] == pytest.approx(102.01)
@@ -218,7 +228,9 @@ def test_slippage_model_does_not_apply_to_limit_orders():
     book = OrderBook()
     book.insert(make_limit("a1", Side.SELL, 100.0, quantity=10.0))
     model = SlippageModel(coefficient=100.0)
-    fills = match(make_limit("b1", Side.BUY, 100.0, quantity=10.0), book, slippage_model=model)
+    fills = match(
+        make_limit("b1", Side.BUY, 100.0, quantity=10.0), book, slippage_model=model
+    )
     assert fills[0].data["price"] == 100.0
 
 

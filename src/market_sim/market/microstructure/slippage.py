@@ -28,7 +28,9 @@ class SlippageModel:
         available_liquidity: float,
         side: Side,
     ) -> float:
-        adjustment = reference_price * self.bps(order_quantity, available_liquidity) / 10_000.0
+        adjustment = (
+            reference_price * self.bps(order_quantity, available_liquidity) / 10_000.0
+        )
         if side == Side.BUY:
             return reference_price + adjustment
         return reference_price - adjustment

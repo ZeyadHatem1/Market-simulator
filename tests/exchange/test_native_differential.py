@@ -27,17 +27,33 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-def make_limit(order_id: str, side: Side, price: float, quantity: float = 10.0, timestamp: float = 1.0) -> Order:
+def make_limit(
+    order_id: str,
+    side: Side,
+    price: float,
+    quantity: float = 10.0,
+    timestamp: float = 1.0,
+) -> Order:
     return Order(order_id, side, OrderType.LIMIT, quantity, timestamp, price)
 
 
-def make_market(order_id: str, side: Side, quantity: float = 10.0, timestamp: float = 1.0) -> Order:
+def make_market(
+    order_id: str, side: Side, quantity: float = 10.0, timestamp: float = 1.0
+) -> Order:
     return Order(order_id, side, OrderType.MARKET, quantity, timestamp, None)
 
 
 def make_engines(slippage_coefficient: float | None = None):
-    py_slip = SlippageModel(coefficient=slippage_coefficient) if slippage_coefficient is not None else None
-    native_slip = SlippageModel(coefficient=slippage_coefficient) if slippage_coefficient is not None else None
+    py_slip = (
+        SlippageModel(coefficient=slippage_coefficient)
+        if slippage_coefficient is not None
+        else None
+    )
+    native_slip = (
+        SlippageModel(coefficient=slippage_coefficient)
+        if slippage_coefficient is not None
+        else None
+    )
     return (
         OrderBook(),
         MatchingEngine(slippage_model=py_slip),
@@ -87,7 +103,9 @@ def test_multi_level_sweep():
         book.insert(make_limit("a2", Side.SELL, 101.0, 5.0))
 
     py_fills = py_engine.match(make_market("m1", Side.BUY, 10.0), py_book, 2.0, 0, "t1")
-    native_fills = native_engine.match(make_market("m1", Side.BUY, 10.0), native_book, 2.0, 0, "t1")
+    native_fills = native_engine.match(
+        make_market("m1", Side.BUY, 10.0), native_book, 2.0, 0, "t1"
+    )
 
     assert_fills_equal(py_fills, native_fills)
     assert_books_equal(py_book, native_book)
@@ -100,7 +118,9 @@ def test_time_priority_at_same_price():
         book.insert(make_limit("a2", Side.SELL, 100.0, 5.0))
 
     py_fills = py_engine.match(make_market("m1", Side.BUY, 5.0), py_book, 2.0, 0, "t1")
-    native_fills = native_engine.match(make_market("m1", Side.BUY, 5.0), native_book, 2.0, 0, "t1")
+    native_fills = native_engine.match(
+        make_market("m1", Side.BUY, 5.0), native_book, 2.0, 0, "t1"
+    )
 
     assert_fills_equal(py_fills, native_fills)
     assert py_fills[0].data["sell_order_id"] == "a1"
@@ -118,7 +138,9 @@ def test_partial_fill_preserves_seq_on_requeue():
     assert_books_equal(py_book, native_book)
 
     py_fills = py_engine.match(make_market("m2", Side.BUY, 5.0), py_book, 3.0, 10, "t2")
-    native_fills = native_engine.match(make_market("m2", Side.BUY, 5.0), native_book, 3.0, 10, "t2")
+    native_fills = native_engine.match(
+        make_market("m2", Side.BUY, 5.0), native_book, 3.0, 10, "t2"
+    )
 
     assert_fills_equal(py_fills, native_fills)
     assert py_fills[0].data["sell_order_id"] == "a1"  # seq preserved -> still first
@@ -133,7 +155,9 @@ def test_cancelled_order_skipped_at_same_price_level():
         book.cancel("a1")
 
     py_fills = py_engine.match(make_market("m1", Side.BUY, 5.0), py_book, 2.0, 0, "t1")
-    native_fills = native_engine.match(make_market("m1", Side.BUY, 5.0), native_book, 2.0, 0, "t1")
+    native_fills = native_engine.match(
+        make_market("m1", Side.BUY, 5.0), native_book, 2.0, 0, "t1"
+    )
 
     assert_fills_equal(py_fills, native_fills)
     assert py_fills[0].data["sell_order_id"] == "a2"
@@ -148,7 +172,9 @@ def test_cancelled_order_skipped_across_levels():
         book.cancel("a1")
 
     py_fills = py_engine.match(make_market("m1", Side.BUY, 5.0), py_book, 2.0, 0, "t1")
-    native_fills = native_engine.match(make_market("m1", Side.BUY, 5.0), native_book, 2.0, 0, "t1")
+    native_fills = native_engine.match(
+        make_market("m1", Side.BUY, 5.0), native_book, 2.0, 0, "t1"
+    )
 
     assert_fills_equal(py_fills, native_fills)
     assert py_fills[0].data["price"] == 101.0
@@ -160,45 +186,63 @@ def test_limit_order_rests_when_not_crossing():
     for book in (py_book, native_book):
         book.insert(make_limit("a1", Side.SELL, 102.0, 5.0))
 
-    py_fills = py_engine.match(make_limit("b1", Side.BUY, 100.0, 10.0), py_book, 2.0, 0, "t1")
-    native_fills = native_engine.match(make_limit("b1", Side.BUY, 100.0, 10.0), native_book, 2.0, 0, "t1")
+    py_fills = py_engine.match(
+        make_limit("b1", Side.BUY, 100.0, 10.0), py_book, 2.0, 0, "t1"
+    )
+    native_fills = native_engine.match(
+        make_limit("b1", Side.BUY, 100.0, 10.0), native_book, 2.0, 0, "t1"
+    )
 
     assert_fills_equal(py_fills, native_fills)
     assert_books_equal(py_book, native_book)
 
 
 def test_slippage_moves_buy_price_up():
-    py_book, py_engine, native_book, native_engine = make_engines(slippage_coefficient=100.0)
+    py_book, py_engine, native_book, native_engine = make_engines(
+        slippage_coefficient=100.0
+    )
     for book in (py_book, native_book):
         book.insert(make_limit("a1", Side.SELL, 100.0, 10.0))
 
     py_fills = py_engine.match(make_market("m1", Side.BUY, 10.0), py_book, 2.0, 0, "t1")
-    native_fills = native_engine.match(make_market("m1", Side.BUY, 10.0), native_book, 2.0, 0, "t1")
+    native_fills = native_engine.match(
+        make_market("m1", Side.BUY, 10.0), native_book, 2.0, 0, "t1"
+    )
 
     assert_fills_equal(py_fills, native_fills)
     assert py_fills[0].data["price"] == pytest.approx(101.0)
 
 
 def test_slippage_moves_sell_price_down():
-    py_book, py_engine, native_book, native_engine = make_engines(slippage_coefficient=100.0)
+    py_book, py_engine, native_book, native_engine = make_engines(
+        slippage_coefficient=100.0
+    )
     for book in (py_book, native_book):
         book.insert(make_limit("b1", Side.BUY, 100.0, 10.0))
 
-    py_fills = py_engine.match(make_market("m1", Side.SELL, 10.0), py_book, 2.0, 0, "t1")
-    native_fills = native_engine.match(make_market("m1", Side.SELL, 10.0), native_book, 2.0, 0, "t1")
+    py_fills = py_engine.match(
+        make_market("m1", Side.SELL, 10.0), py_book, 2.0, 0, "t1"
+    )
+    native_fills = native_engine.match(
+        make_market("m1", Side.SELL, 10.0), native_book, 2.0, 0, "t1"
+    )
 
     assert_fills_equal(py_fills, native_fills)
     assert py_fills[0].data["price"] == pytest.approx(99.0)
 
 
 def test_slippage_uses_pretrade_snapshot_across_levels():
-    py_book, py_engine, native_book, native_engine = make_engines(slippage_coefficient=100.0)
+    py_book, py_engine, native_book, native_engine = make_engines(
+        slippage_coefficient=100.0
+    )
     for book in (py_book, native_book):
         book.insert(make_limit("a1", Side.SELL, 100.0, 5.0))
         book.insert(make_limit("a2", Side.SELL, 101.0, 5.0))
 
     py_fills = py_engine.match(make_market("m1", Side.BUY, 10.0), py_book, 2.0, 0, "t1")
-    native_fills = native_engine.match(make_market("m1", Side.BUY, 10.0), native_book, 2.0, 0, "t1")
+    native_fills = native_engine.match(
+        make_market("m1", Side.BUY, 10.0), native_book, 2.0, 0, "t1"
+    )
 
     assert_fills_equal(py_fills, native_fills)
     assert [f.data["price"] for f in py_fills] == pytest.approx([101.0, 102.01])
@@ -227,16 +271,26 @@ def test_native_matches_python_fuzz(seed, slippage_coefficient):
         side = Side.BUY if rng.random() < 0.5 else Side.SELL
         order_type = OrderType.LIMIT if rng.random() < 0.8 else OrderType.MARKET
         quantity = float(rng.integers(1, 20))
-        price = round(max(0.01, mid + rng.normal(0, 2.0)), 2) if order_type == OrderType.LIMIT else None
+        price = (
+            round(max(0.01, mid + rng.normal(0, 2.0)), 2)
+            if order_type == OrderType.LIMIT
+            else None
+        )
         order_id = f"o{step}"
 
         py_fills = py_engine.match(
             Order(order_id, side, order_type, quantity, float(step), price),
-            py_book, float(step), step * 10, f"t{step}",
+            py_book,
+            float(step),
+            step * 10,
+            f"t{step}",
         )
         native_fills = native_engine.match(
             Order(order_id, side, order_type, quantity, float(step), price),
-            native_book, float(step), step * 10, f"t{step}",
+            native_book,
+            float(step),
+            step * 10,
+            f"t{step}",
         )
 
         assert_fills_equal(py_fills, native_fills)

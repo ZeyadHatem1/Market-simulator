@@ -127,7 +127,9 @@ class NativeMatchingEngine:
         available_liquidity = None
         if needs_slippage:
             available_liquidity = (
-                book.ask_liquidity() if incoming.side == Side.BUY else book.bid_liquidity()
+                book.ask_liquidity()
+                if incoming.side == Side.BUY
+                else book.bid_liquidity()
             )
 
         outcome = self._impl.match(

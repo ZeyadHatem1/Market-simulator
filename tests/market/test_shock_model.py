@@ -24,6 +24,7 @@ def make_model(config: ShockConfig) -> ShockModel:
 
 # --- liquidity_multiplier_path() shape/determinism tests ---
 
+
 def test_length_matches_n_steps():
     model = make_model(make_config(n_steps=100))
     path = model.liquidity_multiplier_path()
@@ -59,10 +60,9 @@ def test_negligible_intensity_produces_no_shocks():
 
 # --- shocked values stay within the configured magnitude range ---
 
+
 def test_shocked_values_within_magnitude_range():
-    config = make_config(
-        n_steps=2000, shock_intensity=10.0, magnitude_range=(0.2, 0.6)
-    )
+    config = make_config(n_steps=2000, shock_intensity=10.0, magnitude_range=(0.2, 0.6))
     path = make_model(config).liquidity_multiplier_path()
     shocked = path[path < 1.0]
     assert shocked.size > 0  # sanity: this config must actually produce shocks
@@ -72,14 +72,19 @@ def test_shocked_values_within_magnitude_range():
 
 # --- duration_range and magnitude_range affect the path in the expected direction ---
 
+
 def test_longer_duration_produces_at_least_as_many_shocked_steps():
     # With the same seed, shock start positions/counts/magnitudes are drawn
     # identically regardless of duration_range (duration is a separate draw
     # that only extends each window's end) — so every shocked step in the
     # short-duration run is also shocked in the long-duration run.
     common = dict(shock_intensity=5.0, n_steps=1000, seed=42)
-    short_path = make_model(make_config(duration_range=(1, 1), **common)).liquidity_multiplier_path()
-    long_path = make_model(make_config(duration_range=(20, 20), **common)).liquidity_multiplier_path()
+    short_path = make_model(
+        make_config(duration_range=(1, 1), **common)
+    ).liquidity_multiplier_path()
+    long_path = make_model(
+        make_config(duration_range=(20, 20), **common)
+    ).liquidity_multiplier_path()
     assert (long_path < 1.0).sum() >= (short_path < 1.0).sum()
 
 
@@ -88,13 +93,18 @@ def test_milder_magnitude_range_produces_higher_multipliers():
     # configs (magnitude is drawn after start/duration, doesn't change how
     # many draws happen), so this compares the same shocked windows directly.
     common = dict(shock_intensity=5.0, n_steps=1000, seed=42, duration_range=(3, 15))
-    harsh_path = make_model(make_config(magnitude_range=(0.05, 0.05), **common)).liquidity_multiplier_path()
-    mild_path = make_model(make_config(magnitude_range=(0.9, 0.9), **common)).liquidity_multiplier_path()
+    harsh_path = make_model(
+        make_config(magnitude_range=(0.05, 0.05), **common)
+    ).liquidity_multiplier_path()
+    mild_path = make_model(
+        make_config(magnitude_range=(0.9, 0.9), **common)
+    ).liquidity_multiplier_path()
     assert np.all(mild_path >= harsh_path)
     assert mild_path.mean() > harsh_path.mean()
 
 
 # --- ShockConfig validation tests ---
+
 
 def test_zero_shock_intensity_raises():
     with pytest.raises(ValueError):

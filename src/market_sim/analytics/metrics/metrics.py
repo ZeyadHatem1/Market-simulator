@@ -14,7 +14,9 @@ def _returns(equity_curve: EquityCurve) -> np.ndarray:
     return values[1:] / values[:-1] - 1.0
 
 
-def sharpe(equity_curve: EquityCurve, periods_per_year: float, risk_free_rate: float = 0.0) -> float:
+def sharpe(
+    equity_curve: EquityCurve, periods_per_year: float, risk_free_rate: float = 0.0
+) -> float:
     """
     Annualized Sharpe ratio of period-over-period equity returns.
     periods_per_year converts per-step statistics to an annualized figure —
@@ -63,7 +65,8 @@ def rolling_volatility(equity_curve: EquityCurve, window: int) -> list[float]:
     if len(returns) < window:
         return []
     return [
-        float(returns[i - window + 1 : i + 1].std(ddof=1)) for i in range(window - 1, len(returns))
+        float(returns[i - window + 1 : i + 1].std(ddof=1))
+        for i in range(window - 1, len(returns))
     ]
 
 

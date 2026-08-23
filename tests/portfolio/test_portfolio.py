@@ -4,7 +4,9 @@ from market_sim.events import market_update, trade_execution
 from market_sim.portfolio import Portfolio
 
 
-def make_fill(price: float, quantity: float, buy_order_id: str, sell_order_id: str, timestamp=1.0):
+def make_fill(
+    price: float, quantity: float, buy_order_id: str, sell_order_id: str, timestamp=1.0
+):
     return trade_execution(
         timestamp=timestamp,
         sequence=1,
@@ -22,6 +24,7 @@ def make_tick(price: float, timestamp: float):
 
 # --- initial state ---
 
+
 def test_initial_state():
     portfolio = Portfolio(strategy_id="s1", initial_cash=10_000.0)
     assert portfolio.cash == 10_000.0
@@ -34,11 +37,14 @@ def test_initial_state():
 
 # --- fill attribution ---
 
+
 def test_fill_for_tracked_order_updates_position_and_cash():
     portfolio = Portfolio(strategy_id="s1", initial_cash=10_000.0)
     portfolio.track_order("my-order")
 
-    portfolio.on_fill(make_fill(100.0, 10.0, buy_order_id="my-order", sell_order_id="other"))
+    portfolio.on_fill(
+        make_fill(100.0, 10.0, buy_order_id="my-order", sell_order_id="other")
+    )
 
     assert portfolio.position_quantity == 10.0
     assert portfolio.cash == pytest.approx(10_000.0 - 1_000.0)
@@ -47,7 +53,9 @@ def test_fill_for_tracked_order_updates_position_and_cash():
 def test_fill_for_untracked_order_is_ignored():
     portfolio = Portfolio(strategy_id="s1", initial_cash=10_000.0)
 
-    portfolio.on_fill(make_fill(100.0, 10.0, buy_order_id="not-mine", sell_order_id="also-not-mine"))
+    portfolio.on_fill(
+        make_fill(100.0, 10.0, buy_order_id="not-mine", sell_order_id="also-not-mine")
+    )
 
     assert portfolio.position_quantity == 0.0
     assert portfolio.cash == 10_000.0
@@ -58,7 +66,9 @@ def test_fill_for_tracked_sell_order_updates_position_and_cash():
     portfolio = Portfolio(strategy_id="s1", initial_cash=10_000.0)
     portfolio.track_order("my-sell")
 
-    portfolio.on_fill(make_fill(50.0, 4.0, buy_order_id="other", sell_order_id="my-sell"))
+    portfolio.on_fill(
+        make_fill(50.0, 4.0, buy_order_id="other", sell_order_id="my-sell")
+    )
 
     assert portfolio.position_quantity == -4.0
     assert portfolio.cash == pytest.approx(10_000.0 + 200.0)
@@ -66,10 +76,13 @@ def test_fill_for_tracked_sell_order_updates_position_and_cash():
 
 # --- unrealized / realized pnl ---
 
+
 def test_unrealized_pnl_after_price_moves():
     portfolio = Portfolio(strategy_id="s1", initial_cash=10_000.0)
     portfolio.track_order("my-order")
-    portfolio.on_fill(make_fill(100.0, 10.0, buy_order_id="my-order", sell_order_id="other"))
+    portfolio.on_fill(
+        make_fill(100.0, 10.0, buy_order_id="my-order", sell_order_id="other")
+    )
 
     portfolio.on_market_update(make_tick(110.0, timestamp=2.0))
 
@@ -82,8 +95,12 @@ def test_realized_pnl_accumulates_on_closing_fill():
     portfolio.track_order("buy-order")
     portfolio.track_order("sell-order")
 
-    portfolio.on_fill(make_fill(100.0, 10.0, buy_order_id="buy-order", sell_order_id="other-1"))
-    portfolio.on_fill(make_fill(110.0, 10.0, buy_order_id="other-2", sell_order_id="sell-order"))
+    portfolio.on_fill(
+        make_fill(100.0, 10.0, buy_order_id="buy-order", sell_order_id="other-1")
+    )
+    portfolio.on_fill(
+        make_fill(110.0, 10.0, buy_order_id="other-2", sell_order_id="sell-order")
+    )
 
     assert portfolio.position_quantity == 0.0
     assert portfolio.realized_pnl == pytest.approx(100.0)
@@ -95,14 +112,19 @@ def test_realized_pnl_history_records_each_fills_realization():
     portfolio.track_order("sell-order")
 
     # opens a position: no realization yet
-    portfolio.on_fill(make_fill(100.0, 10.0, buy_order_id="buy-order", sell_order_id="other-1"))
+    portfolio.on_fill(
+        make_fill(100.0, 10.0, buy_order_id="buy-order", sell_order_id="other-1")
+    )
     # closes it at a profit
-    portfolio.on_fill(make_fill(110.0, 10.0, buy_order_id="other-2", sell_order_id="sell-order"))
+    portfolio.on_fill(
+        make_fill(110.0, 10.0, buy_order_id="other-2", sell_order_id="sell-order")
+    )
 
     assert portfolio.realized_pnl_history == [0.0, pytest.approx(100.0)]
 
 
 # --- equity curve / drawdown ---
+
 
 def test_market_update_records_equity_curve_sample():
     portfolio = Portfolio(strategy_id="s1", initial_cash=10_000.0)
@@ -113,7 +135,9 @@ def test_market_update_records_equity_curve_sample():
 def test_drawdown_tracks_through_losing_and_recovering_price_path():
     portfolio = Portfolio(strategy_id="s1", initial_cash=10_000.0)
     portfolio.track_order("my-order")
-    portfolio.on_fill(make_fill(100.0, 10.0, buy_order_id="my-order", sell_order_id="other"))
+    portfolio.on_fill(
+        make_fill(100.0, 10.0, buy_order_id="my-order", sell_order_id="other")
+    )
 
     portfolio.on_market_update(make_tick(90.0, timestamp=2.0))  # equity down to 9,900
     assert portfolio.drawdown > 0
@@ -127,6 +151,8 @@ def test_drawdown_tracks_through_losing_and_recovering_price_path():
 def test_exposure_reflects_position_notional():
     portfolio = Portfolio(strategy_id="s1", initial_cash=10_000.0)
     portfolio.track_order("my-order")
-    portfolio.on_fill(make_fill(100.0, 10.0, buy_order_id="my-order", sell_order_id="other"))
+    portfolio.on_fill(
+        make_fill(100.0, 10.0, buy_order_id="my-order", sell_order_id="other")
+    )
     portfolio.on_market_update(make_tick(105.0, timestamp=2.0))
     assert portfolio.exposure == pytest.approx(1_050.0)

@@ -29,7 +29,9 @@ def make_strategy(**overrides) -> MomentumStrategy:
 def feed(strategy: MomentumStrategy, prices: list[float]):
     results = []
     for i, price in enumerate(prices):
-        event = market_update(timestamp=float(i + 1), sequence=i, price=price, instrument="SIM")
+        event = market_update(
+            timestamp=float(i + 1), sequence=i, price=price, instrument="SIM"
+        )
         results.append(strategy.on_market_update(event))
     return results
 

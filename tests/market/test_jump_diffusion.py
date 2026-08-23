@@ -30,6 +30,7 @@ def make_process(config: JumpDiffusionConfig) -> JumpDiffusionProcess:
 
 # --- generate() tests ---
 
+
 def test_output_length_matches_n_steps():
     config = make_config(n_steps=100)
     process = make_process(config)
@@ -91,6 +92,7 @@ def test_sequences_are_unique_and_increasing():
 
 # --- price_path() tests ---
 
+
 def test_price_path_length():
     config = make_config(n_steps=100)
     process = make_process(config)
@@ -120,6 +122,7 @@ def test_price_path_same_seed_reproducible():
 
 # --- jump-diffusion-specific correctness ---
 
+
 def test_zero_jump_intensity_matches_pure_gbm():
     # With jump_intensity=0, Poisson(0) is always 0, so this must reduce to
     # exactly the same path as plain GBM for identical mu/sigma/seed — using
@@ -138,7 +141,12 @@ def test_zero_jump_intensity_matches_pure_gbm():
     gbm_path = PriceGenerator(config=gbm_config, clock=SimulationClock()).price_path()
 
     jd_config = make_config(
-        jump_intensity=0.0, mu=0.05, sigma=0.20, n_steps=100, dt=1 / 252, seed=42,
+        jump_intensity=0.0,
+        mu=0.05,
+        sigma=0.20,
+        n_steps=100,
+        dt=1 / 252,
+        seed=42,
         initial_price=100.0,
     )
     jd_path = make_process(jd_config).price_path()
@@ -155,6 +163,7 @@ def test_jumps_produce_a_different_path_than_no_jumps():
 
 
 # --- JumpDiffusionConfig validation tests ---
+
 
 def test_invalid_initial_price_raises():
     with pytest.raises(ValueError):

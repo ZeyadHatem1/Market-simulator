@@ -52,7 +52,9 @@ class JumpDiffusionProcess:
             self._clock.advance(timestamp)
 
             jump_component = self._jump_component(cfg, jump_counts[i], jump_draws[i])
-            price = price * np.exp(drift + diffusion_scale * diffusion_draws[i] + jump_component)
+            price = price * np.exp(
+                drift + diffusion_scale * diffusion_draws[i] + jump_component
+            )
 
             event = market_update(
                 timestamp=timestamp,
@@ -97,7 +99,9 @@ class JumpDiffusionProcess:
     @staticmethod
     def _constants(cfg: JumpDiffusionConfig) -> tuple[float, float]:
         compensator = np.exp(cfg.jump_mean + 0.5 * cfg.jump_std**2) - 1
-        drift = (cfg.mu - 0.5 * cfg.sigma**2 - cfg.jump_intensity * compensator) * cfg.dt
+        drift = (
+            cfg.mu - 0.5 * cfg.sigma**2 - cfg.jump_intensity * compensator
+        ) * cfg.dt
         diffusion_scale = cfg.sigma * np.sqrt(cfg.dt)
         return drift, diffusion_scale
 

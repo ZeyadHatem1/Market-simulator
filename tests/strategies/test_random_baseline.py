@@ -29,7 +29,9 @@ def make_strategy(**overrides) -> RandomBaseline:
 def feed(strategy: RandomBaseline, n_ticks: int):
     results = []
     for i in range(n_ticks):
-        event = market_update(timestamp=float(i + 1), sequence=i, price=100.0, instrument="SIM")
+        event = market_update(
+            timestamp=float(i + 1), sequence=i, price=100.0, instrument="SIM"
+        )
         results.append(strategy.on_market_update(event))
     return results
 

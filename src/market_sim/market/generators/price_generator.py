@@ -46,7 +46,7 @@ class PriceGenerator:
         random_draws: np.ndarray = self._rng.standard_normal(cfg.n_steps)
 
         # GBM constant terms factored out of the loop
-        drift = (cfg.mu - 0.5 * cfg.sigma ** 2) * cfg.dt
+        drift = (cfg.mu - 0.5 * cfg.sigma**2) * cfg.dt
         diffusion_scale = cfg.sigma * np.sqrt(cfg.dt)
 
         for i in range(cfg.n_steps):
@@ -80,10 +80,12 @@ class PriceGenerator:
         prices[0] = cfg.initial_price
 
         random_draws = rng.standard_normal(cfg.n_steps)
-        drift = (cfg.mu - 0.5 * cfg.sigma ** 2) * cfg.dt
+        drift = (cfg.mu - 0.5 * cfg.sigma**2) * cfg.dt
         diffusion_scale = cfg.sigma * np.sqrt(cfg.dt)
 
         for i in range(cfg.n_steps):
-            prices[i + 1] = prices[i] * np.exp(drift + diffusion_scale * random_draws[i])
+            prices[i + 1] = prices[i] * np.exp(
+                drift + diffusion_scale * random_draws[i]
+            )
 
         return prices

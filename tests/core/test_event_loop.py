@@ -34,8 +34,12 @@ def test_run_until_empty_dispatches_in_order():
     queue = EventQueue()
     order = []
 
-    loop.register_handler(EventType.MARKET_UPDATE, lambda e: order.append(("market", e.sequence)))
-    loop.register_handler(EventType.TRADE_EXECUTION, lambda e: order.append(("trade", e.sequence)))
+    loop.register_handler(
+        EventType.MARKET_UPDATE, lambda e: order.append(("market", e.sequence))
+    )
+    loop.register_handler(
+        EventType.TRADE_EXECUTION, lambda e: order.append(("trade", e.sequence))
+    )
 
     queue.push(market_update(timestamp=2.0, sequence=1, price=100.0, instrument="SIM"))
     queue.push(

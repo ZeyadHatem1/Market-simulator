@@ -25,7 +25,9 @@ class Position:
         signed_qty = quantity if side == Side.BUY else -quantity
         original_quantity = self.quantity
 
-        same_direction = original_quantity == 0 or (original_quantity > 0) == (signed_qty > 0)
+        same_direction = original_quantity == 0 or (original_quantity > 0) == (
+            signed_qty > 0
+        )
         if same_direction:
             new_quantity = original_quantity + signed_qty
             self.avg_price = (

@@ -17,6 +17,7 @@ def make_process(config: PoissonArrivalConfig) -> PoissonArrivalProcess:
 
 # --- inter_arrival_times() tests ---
 
+
 def test_inter_arrival_times_length_matches_n_arrivals():
     process = make_process(make_config(n_arrivals=100))
     gaps = process.inter_arrival_times()
@@ -52,6 +53,7 @@ def test_mean_inter_arrival_time_converges_to_expected():
 
 
 # --- arrival_times() tests ---
+
 
 def test_arrival_times_length_matches_n_arrivals():
     process = make_process(make_config(n_arrivals=100))
@@ -89,11 +91,14 @@ def test_higher_rate_produces_more_arrivals_per_unit_time():
     # Same n_arrivals, higher rate => shorter expected gaps => the whole
     # arrival sequence finishes sooner.
     slow = make_process(make_config(rate=1.0, n_arrivals=1000, seed=42)).arrival_times()
-    fast = make_process(make_config(rate=50.0, n_arrivals=1000, seed=42)).arrival_times()
+    fast = make_process(
+        make_config(rate=50.0, n_arrivals=1000, seed=42)
+    ).arrival_times()
     assert fast[-1] < slow[-1]
 
 
 # --- PoissonArrivalConfig validation tests ---
+
 
 def test_invalid_rate_raises():
     with pytest.raises(ValueError):

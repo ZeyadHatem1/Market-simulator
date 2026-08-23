@@ -28,7 +28,11 @@ class MomentumStrategy(Strategy):
         if trade_size <= 0:
             raise ValueError(f"trade_size must be > 0, got {trade_size}")
         super().__init__(
-            strategy_id, initial_cash, clock, order_id_factory, history_maxlen=lookback + 1
+            strategy_id,
+            initial_cash,
+            clock,
+            order_id_factory,
+            history_maxlen=lookback + 1,
         )
         self._lookback = lookback
         self._trade_size = trade_size

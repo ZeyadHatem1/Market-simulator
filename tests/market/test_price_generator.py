@@ -28,6 +28,7 @@ def make_generator(config: SimConfig) -> PriceGenerator:
 
 # --- generate() tests ---
 
+
 def test_output_length_matches_n_steps():
     config = make_config(n_steps=100)
     gen = make_generator(config)
@@ -89,6 +90,7 @@ def test_sequences_are_unique_and_increasing():
 
 # --- price_path() tests ---
 
+
 def test_price_path_length():
     config = make_config(n_steps=100)
     gen = make_generator(config)
@@ -118,6 +120,7 @@ def test_price_path_same_seed_reproducible():
 
 
 # --- SimConfig validation tests ---
+
 
 def test_invalid_initial_price_raises():
     with pytest.raises(ValueError):

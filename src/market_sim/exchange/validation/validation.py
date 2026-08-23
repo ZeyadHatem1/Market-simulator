@@ -11,7 +11,9 @@ def validate_order_submit(event: Event) -> None:
         raise OrderValidationError(f"expected ORDER_SUBMIT, got {event.event_type}")
 
     data = event.data
-    missing = [key for key in ("order_id", "side", "order_type", "quantity") if key not in data]
+    missing = [
+        key for key in ("order_id", "side", "order_type", "quantity") if key not in data
+    ]
     if missing:
         raise OrderValidationError(f"order_submit event missing fields: {missing}")
 

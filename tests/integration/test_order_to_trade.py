@@ -13,7 +13,9 @@ def make_wired_exchange() -> tuple[RuntimeEngine, OrderBook, TradeLog, ExchangeG
     return runtime, book, trade_log, gateway
 
 
-def submit(runtime: RuntimeEngine, timestamp: float, side: Side, price: float, quantity: float):
+def submit(
+    runtime: RuntimeEngine, timestamp: float, side: Side, price: float, quantity: float
+):
     runtime.queue.push(
         order_submit(
             timestamp=timestamp,
@@ -85,7 +87,9 @@ def test_malformed_order_is_rejected_without_crashing_the_run():
 
 def test_slippage_model_wired_through_build_exchange_moves_market_fill_price():
     runtime = RuntimeEngine()
-    book, trade_log, _ = build_exchange(runtime, slippage_model=SlippageModel(coefficient=100.0))
+    book, trade_log, _ = build_exchange(
+        runtime, slippage_model=SlippageModel(coefficient=100.0)
+    )
 
     submit(runtime, timestamp=1.0, side=Side.SELL, price=100.0, quantity=5.0)
     runtime.queue.push(

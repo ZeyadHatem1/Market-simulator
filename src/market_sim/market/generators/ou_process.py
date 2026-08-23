@@ -49,7 +49,9 @@ class OrnsteinUhlenbeckProcess:
             timestamp = (i + 1) * cfg.dt
             self._clock.advance(timestamp)
 
-            value = value * decay + cfg.mu * (1 - decay) + diffusion_scale * random_draws[i]
+            value = (
+                value * decay + cfg.mu * (1 - decay) + diffusion_scale * random_draws[i]
+            )
 
             event = market_update(
                 timestamp=timestamp,
@@ -80,6 +82,10 @@ class OrnsteinUhlenbeckProcess:
         )
 
         for i in range(cfg.n_steps):
-            values[i + 1] = values[i] * decay + cfg.mu * (1 - decay) + diffusion_scale * random_draws[i]
+            values[i + 1] = (
+                values[i] * decay
+                + cfg.mu * (1 - decay)
+                + diffusion_scale * random_draws[i]
+            )
 
         return values
