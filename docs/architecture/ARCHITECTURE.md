@@ -312,27 +312,25 @@ than what this step scopes; this module prices options as a research/analysis ca
 alongside `analytics/`, not as tradeable instruments in the simulation. See
 `docs/decisions/ADR-008-derivatives-isolation-boundary.md` for the full placement rationale.
 
-- `derivatives/black_scholes`: `black_scholes_price(S, K, T, r, sigma, option_type, q=0.0)` —
-  the Black-Scholes-Merton European call/put formula under a continuous dividend yield
-  (`q=0.0` reduces to the plain Black-Scholes formula). `black_scholes_greeks(...)` — closed-form
-  delta/gamma/vega/theta/rho for the same contract, sharing `_d1_d2` with the pricing formula
-  rather than recomputing it. `OptionType` (CALL/PUT) is defined here and re-exported by the
-  other two submodules — a real Enum (not a type alias), so it's imported once, not duplicated
-  per file the way plain type aliases like `EquityCurve` are elsewhere in this codebase.
-- `derivatives/implied_volatility`: `implied_volatility(market_price, S, K, T, r, option_type,
-  q=0.0, sigma_bounds=(1e-6, 5.0))` — solves for sigma via Brent's method (`scipy.optimize.
-  brentq`) rather than Newton-Raphson, since Brent's bracketed search stays robust for deep
-  in/out-of-the-money contracts where vega (and therefore a Newton step) is near zero. Raises
-  `ValueError` if `market_price` isn't attainable for any sigma in `sigma_bounds` (e.g. a
+- `derivatives/black_scholes`: `black_scholes_price` — the Black-Scholes-Merton European
+  call/put formula, with support for a continuous dividend yield. `black_scholes_greeks` —
+  closed-form delta/gamma/vega/theta/rho for the same contract, sharing internal helpers with
+  the pricing formula rather than recomputing them. `OptionType` (CALL/PUT) is defined here and
+  re-exported by the other two submodules — a real Enum (not a type alias), so it's imported
+  once, not duplicated per file the way plain type aliases like `EquityCurve` are elsewhere in
+  this codebase.
+- `derivatives/implied_volatility`: `implied_volatility` — solves for the implied sigma via
+  Brent's bracketed root-finding rather than Newton-Raphson, since Brent's search stays robust
+  for deep in/out-of-the-money contracts where vega (and therefore a Newton step) is near zero.
+  Raises if the target price isn't attainable for any sigma in the search bounds (e.g. a
   no-arbitrage violation).
-- `derivatives/vol_surface`: `build_vol_surface(market_prices, strikes, maturities, S, r,
-  option_type, q=0.0)` — inverts a `(len(maturities), len(strikes))` grid of market option
-  prices into a matching grid of implied vols, one `implied_volatility` solve per cell. Takes
-  `market_prices` as plain input rather than generating them from an assumed smile/skew shape:
-  this simulator has no real options market data, but a caller can synthesize an example price
-  grid via `black_scholes_price` with a hand-picked vol smile and feed it back in as a
-  round-trip demonstration — keeping the function equally usable for synthetic and real data,
-  rather than baking in an invented smile parameterization.
+- `derivatives/vol_surface`: `build_vol_surface` — inverts a grid of market option prices into
+  a matching grid of implied vols, one solve per cell. Takes market prices as plain input rather
+  than generating them from an assumed smile/skew shape: this simulator has no real options
+  market data, but a caller can synthesize an example grid via `black_scholes_price` with a
+  hand-picked vol smile and round-trip it through the solver as a demonstration — keeping the
+  function equally usable for synthetic and real data, rather than baking in an invented smile
+  parameterization.
 
 3D vol-surface plotting is `visualization.plot_vol_surface` (see `visualization/` above) — this
 module itself stays rendering-free, `build_vol_surface` only ever returns the grid.
@@ -424,72 +422,21 @@ Visualization.render()
 
 ---
 
-## 6. Core Class Boundaries
+## 6. Core Design Principles
 
-### Event
+Rather than a class-by-class spec (which had drifted out of sync with the real implementation
+as the codebase grew — §3 and the source itself are the accurate reference for exact method
+signatures), the constraints every core class is actually held to:
 
-```python
-@dataclass
-class Event:
-    event_id: str        # UUID
-    event_type: EventType
-    timestamp: float     # simulation time
-    sequence: int        # tiebreaker for equal timestamps
-    data: dict
-```
-
-### OrderBook
-
-```python
-class OrderBook:
-    _bids: list[tuple[float, int, Order]]  # max-heap (negated price), price-time priority
-    _asks: list[tuple[float, int, Order]]  # min-heap, price-time priority
-    def insert(order: Order) -> None
-    def cancel(order_id: str) -> None       # lazy delete via _cancelled set
-    def best_bid() -> Order | None
-    def best_ask() -> Order | None
-    def bid_liquidity() -> float
-    def ask_liquidity() -> float
-    def spread() -> float | None
-```
-
-### MatchingEngine
-
-```python
-class MatchingEngine:
-    def match(order: Order, book: OrderBook) -> list[Trade]
-```
-
-Pure function-style. No state beyond what it needs to match.
-Deterministic. Heavily unit tested.
-
-### Strategy (abstract base)
-
-```python
-class Strategy(ABC):
-    position: int
-    cash: float
-    pnl: float
-
-    @abstractmethod
-    def on_market_update(self, event: Event) -> list[Event]: ...
-
-    @abstractmethod
-    def on_fill(self, event: Event) -> None: ...
-```
-
-### ResearchEngine
-
-```python
-class ResearchEngine:
-    def sharpe(equity_curve: list[float]) -> float
-    def max_drawdown(equity_curve: list[float]) -> float
-    def calmar(equity_curve: list[float]) -> float
-    def win_rate(trades: list[Trade]) -> float
-    def rolling_volatility(equity_curve: list[float], window: int) -> list[float]
-    def var_95(equity_curve: list[float]) -> float
-    def correlation_matrix(curves: dict[str, list[float]]) -> pd.DataFrame
-```
+- `Event` carries data, not logic — no methods beyond `__post_init__` validation.
+- `OrderBook` is pure storage: price-time priority via two heaps, lazy-delete cancellation. It
+  never computes a fill price.
+- `MatchingEngine` is a pure, stateless function of (order, book state, slippage model) — same
+  inputs, same outputs, no knowledge of strategies, portfolios, or analytics.
+- `Strategy` reacts to events and submits orders via the event queue; it never touches the
+  order book or a portfolio directly.
+- Every `analytics/` function reads simulation output — equity curves, trade logs — and never
+  mutates it.
 
 ---
 
