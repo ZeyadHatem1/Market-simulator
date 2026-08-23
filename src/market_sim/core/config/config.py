@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 @dataclass
@@ -74,7 +74,9 @@ class RegimeConfig:
     instrument: str
     initial_price: float
     regimes: dict[str, tuple[float, float]]  # name -> (mu, sigma), ordered
-    transition_matrix: list[list[float]]  # row i = P(regime i -> regime j), aligned to regimes order
+    transition_matrix: list[
+        list[float]
+    ]  # row i = P(regime i -> regime j), aligned to regimes order
     initial_regime: str
     n_steps: int
     dt: float
@@ -99,7 +101,9 @@ class RegimeConfig:
             )
         for row in self.transition_matrix:
             if len(row) != n:
-                raise ValueError(f"transition_matrix rows must have length {n}, got {len(row)}")
+                raise ValueError(
+                    f"transition_matrix rows must have length {n}, got {len(row)}"
+                )
             if any(p < 0 for p in row):
                 raise ValueError(f"transition probabilities must be >= 0, got {row}")
             row_sum = sum(row)
@@ -115,7 +119,9 @@ class RegimeConfig:
 @dataclass
 class ShockConfig:
     shock_intensity: float  # expected shocks per unit time (Poisson rate)
-    magnitude_range: tuple[float, float]  # liquidity multiplier during a shock, e.g. (0.1, 0.4)
+    magnitude_range: tuple[
+        float, float
+    ]  # liquidity multiplier during a shock, e.g. (0.1, 0.4)
     duration_range: tuple[int, int]  # shock length in steps, e.g. (3, 15)
     n_steps: int
     dt: float

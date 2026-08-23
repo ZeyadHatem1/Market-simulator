@@ -19,10 +19,7 @@ def align_equity_curves(curves: dict[str, EquityCurve]) -> pd.DataFrame:
     holding the last known value forward until the next sample is correct,
     not an approximation.
     """
-    series = {
-        key: pd.Series({timestamp: equity for timestamp, equity in curve})
-        for key, curve in curves.items()
-    }
+    series = {key: pd.Series(dict(curve)) for key, curve in curves.items()}
     return pd.DataFrame(series).sort_index().ffill()
 
 

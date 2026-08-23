@@ -17,7 +17,7 @@ def test_two_strategies_trade_independently_with_isolated_portfolios():
     wiring — no strategy_id needed on the Event schema.
     """
     runtime = RuntimeEngine()
-    book, trade_log, gateway = build_exchange(runtime)
+    book, _trade_log, gateway = build_exchange(runtime)
     manager = PortfolioManager()
 
     strategy_a = MomentumStrategy(
@@ -48,8 +48,12 @@ def test_two_strategies_trade_independently_with_isolated_portfolios():
 
         return handler
 
-    runtime.loop.register_handler(EventType.MARKET_UPDATE, make_market_update_handler(strategy_a, portfolio_a))
-    runtime.loop.register_handler(EventType.MARKET_UPDATE, make_market_update_handler(strategy_b, portfolio_b))
+    runtime.loop.register_handler(
+        EventType.MARKET_UPDATE, make_market_update_handler(strategy_a, portfolio_a)
+    )
+    runtime.loop.register_handler(
+        EventType.MARKET_UPDATE, make_market_update_handler(strategy_b, portfolio_b)
+    )
     runtime.loop.register_handler(EventType.MARKET_UPDATE, manager.on_market_update)
 
     runtime.loop.register_handler(EventType.TRADE_EXECUTION, strategy_a.on_fill)

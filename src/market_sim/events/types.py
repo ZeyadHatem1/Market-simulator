@@ -1,10 +1,10 @@
-from dataclasses import dataclass
-
 from market_sim.core.models import EventType, Side, OrderType
 from .event import Event
 
 
-def market_update(timestamp: float, sequence: int, price: float, instrument: str) -> Event:
+def market_update(
+    timestamp: float, sequence: int, price: float, instrument: str
+) -> Event:
     return Event(
         event_type=EventType.MARKET_UPDATE,
         timestamp=timestamp,
@@ -80,11 +80,18 @@ def portfolio_update(
         event_type=EventType.PORTFOLIO_UPDATE,
         timestamp=timestamp,
         sequence=sequence,
-        data={"strategy_id": strategy_id, "position": position, "cash": cash, "pnl": pnl},
+        data={
+            "strategy_id": strategy_id,
+            "position": position,
+            "cash": cash,
+            "pnl": pnl,
+        },
     )
 
 
-def simulation_complete(timestamp: float, sequence: int, final_timestamp: float) -> Event:
+def simulation_complete(
+    timestamp: float, sequence: int, final_timestamp: float
+) -> Event:
     return Event(
         event_type=EventType.SIMULATION_COMPLETE,
         timestamp=timestamp,

@@ -1,10 +1,11 @@
 from market_sim.core.queue import EventQueue
-from market_sim.core.models import EventType
 from market_sim.events import market_update
 
 
 def make_event(timestamp, sequence):
-    return market_update(timestamp=timestamp, sequence=sequence, price=100.0, instrument="SIM")
+    return market_update(
+        timestamp=timestamp, sequence=sequence, price=100.0, instrument="SIM"
+    )
 
 
 def test_pops_in_timestamp_order():
