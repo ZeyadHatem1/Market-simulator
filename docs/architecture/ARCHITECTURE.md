@@ -512,6 +512,10 @@ market-sim/
 ├── pyproject.toml
 ├── requirements.txt
 ├── .gitignore
+├── .pylintrc
+├── .github/
+│   └── workflows/
+│       └── ci.yml
 ├── config/
 ├── docs/
 │   ├── architecture/

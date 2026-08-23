@@ -66,6 +66,8 @@ module — a pure options-pricing library, not part of this simulation pipeline.
 
 ```
 market-sim/
+├── .github/workflows/ci.yml   # tests + black + pylint on every push/PR to main
+├── .pylintrc
 ├── src/market_sim/
 │   ├── core/          # EventQueue, EventLoop, RuntimeEngine, SimulationClock, config/*
 │   ├── events/         # Event schemas: MarketUpdate, OrderSubmit, TradeExecution, ...
