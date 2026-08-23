@@ -1,0 +1,38 @@
+[MASTER]
+ignore-patterns=^_core.*
+
+[MESSAGES CONTROL]
+# Disabled checks fall into two groups:
+#
+# 1. Conflicts with this project's own conventions (CLAUDE.md: "clean,
+#    professional code, no verbose inline comments"): docstring requirements,
+#    and short mathematical variable names (S, K, T, r, sigma, ax, lo, hi)
+#    that are the standard, readable convention in quant/plotting code, not
+#    sloppiness.
+# 2. False positives or noise on deliberate, documented design choices:
+#    stateless-algorithm classes with one public method (MatchingEngine,
+#    SlippageModel), the lazy `from . import _core` in exchange/native
+#    (ADR-005 -- the extension is optional at import time), pylint being
+#    unable to introspect the compiled .so, near-identical generate()/
+#    price_path() shapes across market/generators (a deliberate shared
+#    interface, not accidental duplication -- deduplicating four already-
+#    tested, independent stochastic processes would be the premature
+#    abstraction CLAUDE.md's hard rules warn against).
+disable=
+    missing-module-docstring,
+    missing-class-docstring,
+    missing-function-docstring,
+    invalid-name,
+    too-many-arguments,
+    too-many-locals,
+    too-many-instance-attributes,
+    too-few-public-methods,
+    import-outside-toplevel,
+    c-extension-no-member,
+    protected-access,
+    superfluous-parens,
+    use-dict-literal,
+    duplicate-code,
+
+[FORMAT]
+max-line-length=100

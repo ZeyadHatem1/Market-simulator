@@ -1,5 +1,7 @@
 # Synthetic Market Simulator
 
+[![CI](https://github.com/ZeyadHatem1/Market-simulator/actions/workflows/ci.yml/badge.svg)](https://github.com/ZeyadHatem1/Market-simulator/actions/workflows/ci.yml)
+
 An event driven quantitative trading simulation engine. Synthetic market generators produce
 price ticks — GBM, mean-reverting, jump-diffusion, and regime-switching processes, plus a
 liquidity-shock overlay. Strategies consume ticks, submit orders, and get filled by a
@@ -93,6 +95,32 @@ market-sim/
 ├── pyproject.toml
 └── requirements.txt
 ```
+
+---
+
+## Setup
+
+```bash
+python -m venv .venv && source .venv/bin/activate   # or your preferred venv tool
+pip install "pybind11>=2.11" setuptools wheel
+pip install -e ".[dev]" --no-build-isolation
+```
+
+This builds the opt-in C++ matching-engine extension as part of the install (see
+[`docs/decisions/ADR-005-native-matching-engine-boundary.md`](docs/decisions/ADR-005-native-matching-engine-boundary.md)),
+so the native differential test suite runs too. The extension is fully optional — if the build
+step is skipped (`pip install -e ".[dev]"` alone, no pybind11), everything still works;
+`market_sim.exchange.native.NATIVE_AVAILABLE` reflects whether it's present, and
+`build_exchange()` (the default, pure-Python path) is unaffected either way.
+
+```bash
+pytest                              # 342 tests (323 pure-Python + 19 native differential)
+black --check .                     # formatting
+pylint src/market_sim --fail-under=9.5   # linting, see .pylintrc for what's intentionally disabled and why
+```
+
+Same commands [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on every push/PR to
+`main`.
 
 ---
 

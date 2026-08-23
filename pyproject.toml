@@ -18,8 +18,8 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest",
-    "black",
-    "pylint",
+    "black==24.10.0",
+    "pylint==2.16.2",
 ]
 
 [tool.setuptools]
