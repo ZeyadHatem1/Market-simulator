@@ -1,4 +1,4 @@
-# SynTradeX — Architecture
+# Market Simulator — Architecture
 
 ## 1. System Goal
 

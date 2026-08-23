@@ -14,7 +14,7 @@ deterministic exchange engine. A research/analytics layer measures strategy perf
 
 ## What This Is
 
-SynTradeX is a **backtesting and forward simulation engine**, not a multi-agent market.
+This project is a **backtesting and forward simulation engine**, not a multi-agent market.
 
 The core is the exchange: a deterministic, price-time-priority order book and matching engine
 (pure Python, with an opt-in C++/pybind11 port for the hot path). Strategies are measurable

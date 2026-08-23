@@ -9,7 +9,7 @@ namespace py = pybind11;
 using namespace msnative;
 
 PYBIND11_MODULE(_core, m) {
-    m.doc() = "SynTradeX native matching engine (OrderBook + MatchingEngine only -- "
+    m.doc() = "Market Simulator native matching engine (OrderBook + MatchingEngine only -- "
               "see ARCHITECTURE.md's Future optimization boundary and ADR-005).";
 
     py::class_<NativeOrder>(m, "NativeOrder")
