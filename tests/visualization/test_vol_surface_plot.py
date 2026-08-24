@@ -36,6 +36,21 @@ def test_title_and_axis_labels():
     assert fig.layout.scene.zaxis.title.text == "Implied Volatility"
 
 
+def test_camera_and_domain_leave_room_for_axis_labels():
+    # Plotly's default camera distance and full-width scene domain clip the
+    # far axis tick labels against the figure edge for a typical vol-surface
+    # aspect ratio -- caught by actually rendering the chart, not by any
+    # data assertion. Regression check: the scene must not be using
+    # plotly's bare defaults (an unset camera, a full [0, 1] domain).
+    surface = _make_surface()
+
+    fig = plot_vol_surface(surface)
+
+    assert fig.layout.scene.camera.eye.x is not None
+    assert fig.layout.scene.domain.x[1] < 1.0
+    assert fig.layout.scene.domain.y[1] < 1.0
+
+
 def test_empty_strikes_raises():
     surface = VolSurface(
         strikes=np.array([]),

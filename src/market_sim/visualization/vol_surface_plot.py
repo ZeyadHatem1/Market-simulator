@@ -31,6 +31,15 @@ def plot_vol_surface(
             xaxis_title="Strike",
             yaxis_title="Maturity",
             zaxis_title="Implied Volatility",
+            # Plotly's default camera distance and full-width scene domain
+            # clip the far axis tick labels (e.g. the last strike/maturity
+            # value) against the figure edge for typical vol-surface aspect
+            # ratios. Pulling the camera back and leaving margin on the
+            # right/top of the scene's domain keeps every tick label
+            # inside the frame.
+            domain=dict(x=[0.0, 0.92], y=[0.0, 0.92]),
+            camera=dict(eye=dict(x=1.7, y=1.7, z=1.2)),
         ),
+        margin=dict(l=20, r=20, b=20, t=60),
     )
     return fig
