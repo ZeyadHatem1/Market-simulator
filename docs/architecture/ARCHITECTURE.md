@@ -299,6 +299,10 @@ specifically what the stack table earmarks plotly for.
   them yet, unlike `plot_vol_surface` which had a concrete data contract (`VolSurface`) waiting
   on it.
 
+All three chart functions above are exercised end-to-end (not just asserted against by their
+test suites) in `notebooks/04_visualization_gallery.ipynb` — a minimal real input built for
+each, rendered for real.
+
 ---
 
 ### `src/market_sim/derivatives`
